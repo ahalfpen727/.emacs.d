@@ -1,0 +1,11 @@
+#!/bin/sh
+
+### Set up a pure environment for snakemake.el commands
+###
+### If `snakemake-shell-file-name' points to this file,
+### `snakemake-term-start' will start a terminal with an environment
+### that exposes snakemake and the dependencies defined in "guix.scm",
+### a file which should be located in the same directory as the
+### current Snakefile.
+
+guix environment --pure -m manifest.scm --ad-hoc snakemake
