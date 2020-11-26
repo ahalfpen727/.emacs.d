@@ -1,2 +1,0 @@
-
-(require '__MODULE__)
