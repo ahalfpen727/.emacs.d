@@ -5,11 +5,11 @@
 (when (string< emacs-version "23.1")
   (error "GNU Emacs 23.1 or later required for this .emacs initialisation file"))
 
-(setq load-path                         ; Search $HOME/lib/emacs for libraries
-      (cons "~/lib/emacs" load-path))
+;;(setq load-path                         ; Search $HOME/lib/emacs for libraries
+;;      (cons "/home/drew/lib/emacs" load-path))
 
 (when (require 'package nil t)          ; Emacs 24.1 and later supports packages
-  (setq package--init-file-ensured t)   ;   Don't add code to ~/.emacs
+  (setq package--init-file-ensured t)   ;   Don't add code to /home/drew/.emacs
   (setq package-archives                ;   Set custom archive paths
 	`(("gnu" .
            ,(format "http%s://elpa.gnu.org/packages/"
@@ -86,32 +86,42 @@
      (1 'warning t)))
   "TODO-style keywords for syntax highlighting.")
 
+(add-to-list 'load-path "/home/drew/.emacs.d/lisp/csv-mode.el") 
+(add-to-list 'load-path "/home/drew/.emacs.d/lisp/pager.el")
+(add-to-list 'load-path "/home/drew/.emacs.d/lisp/ansi-color.el")
+(add-to-list 'load-path "/home/drew/.emacs.d/comment-edit.el")
+
 ;;ESS (Emacs Speaks Statistics) stuff ; bash-like comments after code
-(add-to-list 'load-path "~/.emacs.d/comment-edit.el")
-(add-to-list 'load-path "~/.emacs.d/ess-site.el")
-(add-to-list 'load-path "~/.emacs.d/lisp/")
-(add-to-list 'load-path "~/.emacs.d/lisp/csv-mode.el") 
-(add-to-list 'load-path "~/.emacs.d/lisp/pager.el")
-(add-to-list 'load-path "~/.emacs.d/lisp/ansi-color.el")
-(add-to-list 'load-path "~/.emacs.d/mardown-mode/")
-(add-to-list 'load-path "~/.emacs.d/mardown-mode/markdown-mode.el")
+(let ((default-directory "/home/drew/.emacs.d/ess/"))
+  (normal-top-level-add-subdirs-to-load-path))
+;;(add-to-list 'load-path "/home/drew/.emacs.d/ess")
+(let ((default-directory "/home/drew/.emacs.d/lisp/"))
+  (normal-top-level-add-subdirs-to-load-path))
+;;(add-to-list 'load-path "/home/drew/.emacs.d/lisp/")
+
+(add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/")
+(add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/markdown-mode.el")
+(require 'markdown-mode)
 (autoload 'markdown-mode "markdown-mode" "Major mode for editing Markdown files" t)
 (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
 
+;; snakemake mode added from .emacs.d/
+(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/")
+(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/snakemake.el")
+;;(require 'snakemake-mode)
+
 ;; So ESS can find Rterm
-(setq inferior-R-program-name "/Library/Frameworks/R.framework/Versions/3.0/Resources/bin/R")
+(setq inferior-R-program-name "/usr/bin/R")
 (setq csv-separators '("," "\t"))
 ;;(require 'init-ess-r-mode)
 ;;(require 'init-ess-site)
 
+;(add-to-list 'load-path "/path/to/auto-package-update")
+;(require 'auto-package-update)
+
 (org-babel-do-load-languages
 'org-babel-load-languages
 '((R . t)))
-
-;; snakemake mode added from .emacs.d/
-(add-to-list 'load-path "~/.emacs.d/snakemake-mode/")
-(add-to-list 'load-path "~/.emacs.d/snakemake-mode/snakemake.el")
-;;(require 'snakemake-mode)
 
 (setq inferior-R-program-name "/usr/lib/R")
 ;;(ess-toggle-underscore nil)
@@ -124,7 +134,7 @@
 ; disable C-c C-c ess-eval-buffer
 (add-hook 'ess-mode-hook '(lambda () (define-key ess-mode-map "\C-c\C-c" nil)))
 ;(setq eldoc-echo-area-use-multiline-p t)
-(add-to-list 'load-path "~/.emacs.d/mardown-mode/")
+(add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/")
 
 ; window splitting, removing panes, etc
 (global-set-key (kbd "M-0") 'delete-other-windows) ; 【Alt+0】 unsplit all
