@@ -154,3 +154,17 @@
 
 ; markdown and polymode stuff (for using Rmd files)
 ; file available from: http://jblevins.org/projects/markdown-mode/
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   (quote
+    (json-mode org htmlize db sqlite3 sqlite markdown-mode+ ess-R-data-view bug-hunter))))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
