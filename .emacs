@@ -97,18 +97,16 @@
 ;;(add-to-list 'load-path "/home/drew/.emacs.d/ess")
 (let ((default-directory "/home/drew/.emacs.d/lisp/"))
   (normal-top-level-add-subdirs-to-load-path))
-;;(add-to-list 'load-path "/home/drew/.emacs.d/lisp/")
+(let ((default-directory "/home/drew/.emacs.d/emacs-compbio-kit/"))
+  (normal-top-level-add-subdirs-to-load-path))
 
 (add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/")
+(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/")
+(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/snakemake.el")
 (add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/markdown-mode.el")
 (require 'markdown-mode)
 (autoload 'markdown-mode "markdown-mode" "Major mode for editing Markdown files" t)
 (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
-
-;; snakemake mode added from .emacs.d/
-(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/")
-(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/snakemake.el")
-;;(require 'snakemake-mode)
 
 ;; So ESS can find Rterm
 (setq inferior-R-program-name "/usr/bin/R")
