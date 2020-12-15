@@ -1,0 +1,2518 @@
+;; -*- mode: Emacs-Lisp; coding: utf-8 -*-
+
+;; **********************************************************************
+;; *                    GNU Emacs Customisation File                    *
+;; *               Copyright (C) 1999-2020, John Zaitseff               *
+;; **********************************************************************
+
+;; [JNZ] Modified 09-May-2020
+
+;; This file customises GNU Emacs version 23.1 and later, given my
+;; personal preferences.  See also .Xresources for additional settings.
+;; Note that CentOS 6.x and RHEL 6.x still ship Emacs 23.1.
+;;
+;; This file may be distributed and/or modified as long as the copyright
+;; line is retained without modification.
+
+
+;; **********************************************************************
+;; General initialisation
+
+(unless (string-match "GNU" (emacs-version))
+  (error "GNU Emacs required for this .emacs initialisation file"))
+(when (string< emacs-version "23.1")
+  (error "GNU Emacs 23.1 or later required for this .emacs initialisation file"))
+
+(setq load-path				; Search $HOME/lib/emacs for libraries
+      (cons "~/lib/emacs" load-path))
+
+(when (require 'package nil t)		; Emacs 24.1 and later supports packages
+  (setq package--init-file-ensured t)	;   Don't add code to ~/.emacs
+  (setq package-archives		;   Set custom archive paths
+	`(("gnu" .
+	   ,(format "http%s://elpa.gnu.org/packages/"
+		    (if (gnutls-available-p) "s" "")))
+	  ("melpa" .
+	   ,(format "http%s://melpa.org/packages/"
+		    (if (gnutls-available-p) "s" "")))))
+  (package-initialize))			;   Initialise ELPA/MELPA packages
+
+(if (display-graphic-p)			; Is this a graphics display?
+    (progn				; Yes...
+      (setq frame-title-format "%b - Emacs") ; Always show buffer name in frame
+      (setq frame-resize-pixelwise t)	;   Resize frames in non-char increments
+      (setq pop-up-frames nil)		;   Don't use separate frames for buffers
+      (tool-bar-mode 0)			;   Turn the tool-bar off
+      (set-scroll-bar-mode 'right)	;   Make the scroll bar on the right
+      (setq mouse-yank-at-point t)	;   Insert text at text point
+      (mouse-wheel-mode t)		;   Allow the use of the mouse wheel
+      (setq ring-bell-function		;   Use the KDE beep sound
+	    (lambda ()
+	      (play-sound-file
+	       "~/lib/sounds/kde-beep.wav"))))
+  (progn				; No, we are in a terminal
+    (menu-bar-mode 0)			;   Turn the menu-bar off
+    (when (fboundp #'tool-bar-mode)
+      (tool-bar-mode 0))		;   and the tool-bar, too
+    (xterm-mouse-mode 1)))		;   Enable the mouse under xterm(1)
+
+(setq inhibit-startup-screen t)		; Turn the welcome screen off
+(setq inhibit-startup-buffer-menu nil)	; Show buffer menu at startup
+
+(prefer-coding-system 'utf-8)		; Use UTF-8 by default
+(set-language-environment "utf-8")	; We are a UTF-8 shop...
+(setq file-name-coding-system 'utf-8)	; Filenames are also in UTF-8
+
+(setq x-select-request-type		; Specify X11 Selection preferences
+      '(UTF8_STRING COMPOUND_TEXT TEXT STRING)) ; (UTF-8 is always best)
+(setq select-enable-clipboard t)	; Use the clipboard under X11
+
+(line-number-mode 1)			; Display the line number
+(column-number-mode 1)			; Display the column number
+(file-name-shadow-mode 1)		; Dim parts of filenames being ignored
+(transient-mark-mode 0)			; Don't enable transient marks
+(setq-default truncate-lines t)		; Don't display continuation lines
+(when (fboundp 'global-eldoc-mode)	; Emacs 25.1 and later
+  (global-eldoc-mode 0))		; Don't automatically display help
+
+
+;; **********************************************************************
+;; Autoloaded non-ELPA/MELPA packages
+
+(autoload 'svn-status "psvn"
+  "Examine the status of a Subversion working directory." t nil)
+(autoload 'insert-random-uuid "uuidgen"
+  "Insert a random UUID into the buffer." t nil)
+
+
+;; **********************************************************************
+;; Global syntax highlighting
+
+(global-font-lock-mode 1)		; Enable syntax highlighting
+(setq font-lock-maximum-decoration t)	;   with the best results
+
+(defvar font-lock-todo-keywords
+  '(("\\(@@@\\|\\_<BUG:\\|\\_<FIXME:\\|\\_<NB:\\|\\_<NOTE:\\|\\_<TODO:\\|\\_<XXX:\\|\\_<XXX\\_>\\)" .
+     (1 'warning t)))
+  "TODO-style keywords for syntax highlighting.")
+
+(defun font-lock-add-todo-keywords ()	; Highlight TODO-style keywords
+  "Add syntax highlighting for TODO-style keywords."
+  (font-lock-add-keywords nil font-lock-todo-keywords t))
+
+(mapc					; Add font-lock-add-todo-keywords
+ (lambda (mode-hook)			;   to a list of hooks
+   (add-hook mode-hook #'font-lock-add-todo-keywords))
+ '(text-mode-hook prog-mode-hook))
+
+
+;; **********************************************************************
+;; Text modes
+
+(setq-default electric-indent-mode nil)	; Turn off electric indent
+(setq-default fill-column 73)		; 73-column text for M-Q and C-u M-Q
+	; (yes, 73 columns: this is for historical reasons)
+(setq-default sentence-end-base "[.?!‼‽⁇⁈⁉⸮․‥…—――][])}〉⟩⟫  \"'‘’“”«»‹›]*")
+	; Sentence endings cater for multiple languages, not just English
+(setq table-time-before-update 0.1)	; 0.1s between redraws of table updates
+(setq table-time-before-reformat 0.1)	;   and reformatting
+
+(setq auto-mode-alist
+      (cons '("README.*\\.html?\\'" . mhtml-mode)     ; README*.htm / README*.html
+      (cons '("README.*\\.md\\'"    . markdown-mode)  ; README*.md
+      (cons '("README.*\\.org\\'"   . org-mode)       ; README*.org
+      (cons '("README.*\\.rst\\'"   . rst-mode)       ; README*.rst
+      (cons '("README.*"            . text-mode)      ; All other README* files
+      (cons '("TODO\\'"             . outline-mode)   ; Use outline-mode for TODO
+      (cons '("\\.annot\\'"         . nxml-mode)      ; *.annot files are nXML-mode
+      (cons '("\\.esrc\\'"          . mhtml-mode)     ; *.esrc files are actually HTML
+      (cons '("\\.psftx\\'"         . conf-unix-mode) ; *.psftx files are config-style
+      (cons '("\\.webmanifest\\'"   . json-mode)      ; *.webmanifest are JSON files
+      (cons '("/debian\\([-.][^/]*\\)?/\\([[:lower:][:digit:]][[:lower:][:digit:].+-]+\\.\\)?changelog\\'" . debian-changelog-mode)
+      (cons '("/debian\\([-.][^/]*\\)?/[^/]*NEWS.*\\'"    . debian-changelog-mode)
+      (cons '("/debian\\([-.][^/]*\\)?/control\\'"        . debian-control-mode)
+      (cons '("/debian\\([-.][^/]*\\)?/[^/]*copyright\\'" . debian-copyright-mode)
+	    auto-mode-alist)))))))))))))))
+
+(add-hook 'text-mode-hook		; Settings for text mode
+  (lambda ()
+    (turn-off-auto-fill)		; Turn off Auto-Fill mode
+    (setq fill-individual-varying-indent nil)))	; Change of indent is a new paragraph
+
+(add-hook 'markdown-mode-hook		; Settings for Markdown text
+  (lambda ()
+    (setq tab-width 8)))		; Tabs are always 8 spaces!
+
+(add-hook 'sgml-mode-hook		; Settings for SGML/XML modes
+  (lambda ()
+    (setq sgml-basic-offset 2)))	; Indentation: 2 spaces
+
+(add-hook 'css-mode-hook		; Settings for CSS
+  (lambda ()
+    (setq comment-column 32)		; In-line comments at column 32
+    (setq css-indent-offset 4)))	; Indentation within rules: 4 spaces
+
+(add-hook 'outline-mode-hook		; Settings for TODO files
+  (lambda ()
+    (setq outline-regexp " *[-*]+")))	; Headings start with "*" or "-"
+
+(define-derived-mode mutt-mail-mode	; Major mode for editing emails
+  text-mode				;   based on standard text mode
+  "Mutt Mail"
+  "Text mode for editing emails under the Mutt mail client.")
+(add-hook 'mutt-mail-mode-hook
+  (lambda ()
+    (setq fill-column 68)		; Set text to be 68 columns wide
+    (turn-on-auto-fill)))		;   with automatic word wrapping
+
+(setq auto-mode-alist
+      (cons '("/[mM]ail/"   . mutt-mail-mode) ; Files under Mail or mail are mutt-mail-mode
+      (cons '("^/tmp/mutt-" . mutt-mail-mode) ; And so are /tmp/mutt-* files
+	    auto-mode-alist)))
+
+
+;; **********************************************************************
+;; Programming modes
+
+(setq-default comment-column 40)	; In-line comments at column 40
+
+(setq auto-mode-alist
+      (cons '("\\.cu\\'"      . c-mode)		; *.cu files are CUDA C programs
+      (cons '("\\.qml\\'"     . json-mode)	; *.qml files are JSON
+      (cons '("\\.geojson\\'" . json-mode)	; *.geojson files are JSON too
+      (cons '("\\.ily\\'"     . LilyPond-mode) 	; *.ily files are LilyPond includes
+	    auto-mode-alist)))))
+
+(defun c-lineup-arglist-tabs-only (ignored)
+  "Line up C argument lists by tabs, not spaces."
+  (let* ((anchor (c-langelem-pos c-syntactic-element))
+	 (column (c-langelem-2nd-pos c-syntactic-element))
+	 (offset (- (1+ column) anchor))
+	 (steps (floor offset c-basic-offset)))
+    (* (max steps 1)
+       c-basic-offset)))
+
+(add-hook 'c-mode-common-hook		; Settings for C-type modes
+  (lambda ()
+    (c-set-style "k&r")			; Kernighan & Ritchie are RIGHT!
+    (setq c-basic-offset 4)		; Indentation: 4 spaces
+    (setq comment-column 48)		; In-line comments at column 48
+    (c-add-style			; Add a mode for Linux C code
+     "linux-tabs-only"
+     '("linux"
+       ;; See linux/Documentation/process/coding-style.rst for details
+       (c-basic-offset . 8)		; Indentation of 8 (one tab)
+       (indent-tabs-mode . t)		; Use tabs to indent
+       (c-label-minimum-indentation . 0)
+       (c-offsets-alist . (
+       	(arglist-cont-nonempty . (c-lineup-gcc-asm-reg c-lineup-arglist-tabs-only))
+       	(arglist-close         . c-lineup-arglist-tabs-only)
+       	(arglist-intro         . +)
+       	(brace-list-intro      . +)
+       	(c                     . c-lineup-C-comments)
+       	(case-label            . 0)
+       	(comment-intro         . c-lineup-comment)
+       	(cpp-define-intro      . +)
+       	(cpp-macro             . -1000)
+       	(cpp-macro-cont        . +)
+       	(defun-block-intro     . +)
+       	(else-clause           . 0)
+       	(func-decl-cont        . +)
+       	(inclass               . +)
+       	(inher-cont            . c-lineup-multi-inher)
+       	(knr-argdecl-intro     . 0)
+       	(label                 . -1000)
+       	(statement             . 0)
+       	(statement-block-intro . +)
+       	(statement-case-intro  . +)
+       	(statement-cont        . +)
+       	(substatement          . +)))))))
+
+(define-derived-mode linux-c-mode	; Major mode for editing Linux C code
+  c-mode				;   based on standard C mode
+  "Linux C"
+  "Major mode for editing Linux kernel C source code.")
+(add-hook 'linux-c-mode-hook
+  (lambda ()
+    (c-set-style "linux-tabs-only")))
+
+(defalias #'perl-mode #'cperl-mode)	; Use CPerl mode instead of Perl mode
+(add-hook 'cperl-mode-hook		; Settings for CPerl mode
+  (lambda ()
+    (cperl-set-style "PerlStyle")	; Use default Camel Book style
+    (setq comment-column 40)))		; Seems to be overridden otherwise
+
+(add-hook 'python-mode-hook		; Settings for Python mode
+  (lambda ()
+    (setq py-indent-offset 4)		; Indent using four spaces
+    (setq py-docstring-fill-column fill-column)	; Use default fill-column settings
+    (setq py-comment-fill-column fill-column)
+    (setq py-docstring-style 'pep-257-nn)	; PEP-257 documentation style
+    (setq py-closing-list-dedents-bos t)))	; Close lists etc under first char
+(setq-default py-auto-complete-p nil)	; Don't use auto-completion
+(setq py-eldoc-mode-p nil)		; Don't automatically display help
+(setq py-pythonpath "~/lib/python")	; Personal Python modules
+(setq py-shell-name "python3")		; Python 2.x is now obsolete
+(setq py-python-command "python3")
+(setq py-pylint-command "pylint3")
+(setq pylint-command "pylint3")		; As used in pylint.el
+(dolist (pyvers				; Determine version of Python installed
+	 '("3.10" "3.9" "3.8" "3.7" "3.6" "3.5" "3.4"))
+  (let ((pypdb (concat "/usr/lib/python" pyvers "/pdb.py"))
+	(pypdbset))
+    (if (and
+	 (not pypdbset)
+	 (file-exists-p pypdb))
+	(progn
+	  (setq py-pdb-path pypdb)
+	  (setq pypdbset t)))))
+
+(add-hook 'sh-mode-hook			; Settings for shell mode
+  (lambda ()
+    (setq sh-basic-offset 4)))		; Indentation: 4 spaces
+
+(add-hook 'java-mode-hook		; Settings for Java mode
+  (lambda ()
+    (c-set-style "java")))
+
+(defalias #'lilypond-mode #'LilyPond-mode) ; Another name for LilyPond-mode
+(add-hook 'LilyPond-mode-hook
+  (lambda ()
+    (setq LilyPond-indent-level 4)	; Indent to 4 spaces in LilyPond mode
+    (font-lock-add-todo-keywords)))	; Highlight TODO (otherwise overridden)
+
+(setq LilyPond-ps-command   "okular")	; Assume KDE 4 or later
+(setq LilyPond-pdf-command  "okular")
+(setq LilyPond-midi-command "timidity -c /etc/timidity/splendid72.cfg")
+
+(setq magit-view-git-manual-method #'man)
+
+
+;; **********************************************************************
+;; Keyboard shortcuts
+
+(global-set-key (kbd "C-z")     #'undo)	; suspend-frame is now C-x C-z
+(global-set-key (kbd "C-x g")   #'magit-status)
+(global-set-key (kbd "C-x M-g") #'magit-dispatch)
+
+(when (display-graphic-p)
+  (global-set-key (kbd "C-<kp-add>")      #'text-scale-increase)
+  (global-set-key (kbd "C-<kp-subtract>") #'text-scale-decrease))
+
+(defvar unicode-transl-char-map		; See also iso-transl-char-map variable
+  '(
+    ("_h" . "\u2010")	; HYPHEN                          - also C-x 8 _ h
+    ("_H" . "\u2011")	; NON-BREAKING HYPHEN             - also C-x 8 _ H
+    ("_f" . "\u2012")	; FIGURE DASH                     - also C-x 8 _ f
+    ("_n" . "\u2013")	; EN DASH                         - also C-x 8 _ n
+    ("-"  . "\u2013")	; EN DASH
+    ("_m" . "\u2014")	; EM DASH                         - also C-x 8 _ m
+    ("="  . "\u2014")	; EM DASH
+    ("_q" . "\u2015")	; HORIZONTAL BAR (quotation dash) - also C-x 8 _ q
+    (";"  . "\u2018")	; LEFT SINGLE QUOTATION MARK      - also C-x 8 [
+    ("'"  . "\u2019")	; RIGHT SINGLE QUOTATION MARK     - also C-x 8 ]
+    (":"  . "\u201C")	; LEFT DOUBLE QUOTATION MARK      - also C-x 8 {
+    ("\"" . "\u201D")	; RIGHT DOUBLE QUOTATION MARK     - also C-x 8 }
+    ("*"  . "\u2022")	; BULLET                          - also C-x 8 * *
+    ("."  . "\u2026")	; HORIZONTAL ELLIPSIS
+    (" "  . "\u202F")	; NARROW NO-BREAK SPACE
+    ("<"  . "\u2039")	; SINGLE LEFT-POINTING ANGLE QUOTATION MARK
+    (">"  . "\u203A")	; SINGLE RIGHT-POINTING ANGLE QUOTATION MARK
+    ("e"  . "\u20AC")	; EURO SIGN                       - also C-x 8 * E
+    ("ff" . "\uFB00")	; LATIN SMALL LIGATURE FF
+    ("fi" . "\uFB01")	; LATIN SMALL LIGATURE FI
+    ("fl" . "\uFB02")	; LATIN SMALL LIGATURE FL
+    ("Fi" . "\uFB03")	; LATIN SMALL LIGATURE FFI
+    ("Fl" . "\uFB04")	; LATIN SMALL LIGATURE FFL
+   )
+  "Alist of character translations for entering certain Unicode characters.
+Each element has the form (STRING . VECTOR).  The sequence STRING
+of (possibly more than one) ASCII characters translates into the
+sequence VECTOR.  VECTOR is normally one Unicode character
+long.")
+
+(defvar unicode-transl-ctl-x-9-map nil
+  "Keymap for C-x 9 prefix.")
+(or unicode-transl-ctl-x-9-map
+    (fset 'unicode-transl-ctl-x-9-map
+	  (setq unicode-transl-ctl-x-9-map (make-sparse-keymap))))
+(or key-translation-map
+    (setq key-translation-map (make-sparse-keymap)))
+(define-key key-translation-map (kbd "C-x 9") unicode-transl-ctl-x-9-map)
+
+(defun unicode-transl-define-keys (alist)
+  (while alist
+    (define-key unicode-transl-ctl-x-9-map (car (car alist)) (cdr (car alist)))
+    (setq alist (cdr alist))))
+
+(unicode-transl-define-keys unicode-transl-char-map)
+
+
+;; **********************************************************************
+;; Miscellaneous
+
+;(setq ring-bell-function #'ignore)	; Don't make any sounds
+(setq enable-recursive-minibuffers t)	; Allow stacking of minibuffers
+(minibuffer-depth-indicate-mode 1)	;   and show depth when this is done
+(put 'eval-expression 'disabled nil)	; Allow Emacs LISP in minibuffer
+(setq next-line-add-newlines nil)	; Don't create new lines with C-n
+(auto-compression-mode 1)		; Automatically uncompress files
+(setq read-quoted-char-radix 16)	; Enter characters in hexadecimal
+(setq-default case-fold-search t)	; Searches are NOT case sensitive
+(setq-default show-trailing-whitespace t)  ; Highlight any trailing spaces
+(setq scroll-preserve-screen-position t)   ; Keep location of point if possible
+(setq-default next-screen-context-lines 1) ; Keep just one line when scrolling
+(setq text-scale-mode-step 1.1)		; Increase/decrease font scale steps
+(setq diff-use-changed-face nil)	; Determine added/removed lines
+(setq calendar-week-start-day 1)	; Start the week on a Monday
+(setq european-calendar-style t)	; Use DD/MM/YY-style dates
+
+(setq dired-listing-switches		; Set ls(1) options for dired buffers
+      "-alv --group-directories-first")
+
+(setq backup-by-copying nil)		; Create backups by using rename
+(setq backup-by-copying-when-linked t)	;   except when files are multi-linked
+(setq backup-by-copying-when-mismatch t) ; Preserve owner and group
+(setq backup-inhibited t)		; Prevent backups from being created
+(setq auto-save-default nil)		; Prevent auto-saving by default
+
+(require 'uniquify)			; Make buffer names unique: incorporate
+(setq uniquify-buffer-name-style 'forward) ; part of the directory path
+
+(add-hook 'shell-mode-hook		; Hook to run during M-x shell
+  #'ansi-color-for-comint-mode-on)	; Allow colour in shell mode
+
+(cond					; Set the default email address
+  ((string= user-login-name "john")
+   (setq user-mail-address "J.Zaitseff@zap.org.au"))
+  ((or (string= user-login-name "zaitseff")
+       (string= user-login-name "z9693022"))
+   (setq user-mail-address "J.Zaitseff@unsw.edu.au")))
+
+
+;; **********************************************************************
+;; Useful functions
+
+(defun count-words (start end)
+  "Return the number of words between START and END.
+Note that words are as Emacs defines them: hyphenated words,
+for example, count as two or more words; in addition, certain
+punctuation might be classified as words."
+  (save-excursion
+    (let ((count 0))
+      (goto-char start)
+      (while (< (point) end)
+	(when (forward-word 1)
+	  (setq count (1+ count))))
+      count)))
+
+(defun count-words-region (start end)
+  "Print the number of words in the region."
+  (interactive "r")
+  (message "Region has %d words" (count-words start end)))
+
+(defun count-words-buffer ()
+  "Print the number of words in the buffer."
+  (interactive)
+  (message "Buffer has %d words" (count-words (point-min) (point-max))))
+
+(defun count-lines-buffer ()
+  "Print the number of lines and characters in the buffer."
+  (interactive)
+  (message "Buffer has %d lines, %d characters"
+	   (count-lines (point-min) (point-max))
+	   (- (point-max) (point-min))))
+
+(defun box-center-line (&optional nlines)
+  "Centre NLINES lines at the point within left and right box margins.
+For each line starting at the point, for NLINES (by default, 1),
+place the first non-space word starting in the first column and
+the last non-space word ending in the last column (as specified
+by `fill-column'); these are called “box margins.”  Everything
+else on that line is centred between those margins using an equal
+number of spaces on each side.
+
+For example, if `fill-column' is currently set to 40, running
+`box-center-line' over the following line:
+
+  * Box-center this line *
+
+will produce:
+
+  *         Box-centre this line         *
+
+Each box margin may have any number of any characters, although
+spaces and tabs are not allowed as part of that margin."
+  (interactive "*P")
+  (when nlines
+    (setq nlines (prefix-numeric-value nlines)))
+  (save-excursion
+    (while (not (eq nlines 0))
+      (let ((lm (current-left-margin))
+	    line-length
+	    num-spaces)
+	(beginning-of-line)
+	(delete-horizontal-space)
+	(indent-line-to lm)
+	(skip-chars-forward "^ \t")
+	(just-one-space)
+	(end-of-line)
+	(delete-horizontal-space)
+	(skip-chars-backward "^ \t")
+	(just-one-space)
+	(end-of-line)
+	(setq line-length (current-column))
+	(setq num-spaces (- fill-column line-length))
+	(when (> num-spaces 0)
+	  (beginning-of-line)
+	  (skip-chars-forward " \t")
+	  (skip-chars-forward "^ \t")
+	  (just-one-space (1+ (/ num-spaces 2)))
+	  (end-of-line)
+	  (skip-chars-backward "^ \t")
+	  (just-one-space (1+ (- num-spaces (/ num-spaces 2))))))
+      (cond
+	((null nlines)
+	 (setq nlines 0))
+	((> nlines 0)
+	 (setq nlines (1- nlines))
+	 (forward-line 1))
+	((< nlines 0)
+	 (setq nlines (1+ nlines))
+	 (forward-line -1))))))
+
+(defun update-epub-packageopf-dates ()
+  "Update date-related EPUB OPF meta properties in this buffer.
+Update the <dc:date> and <meta property=\"dcterms:modified\">
+fields in the current buffer, which is assumed to be an EPUB
+package.opf-style file."
+  (interactive "*")
+  (let ((case-fold-search nil))
+    (goto-char (point-min))
+    (search-forward-regexp "<dc:date>\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\)T\\([0-9]\\{2\\}\\):00:00Z</dc:date>")
+    (let ((ds-cur (match-string 1))
+	  (vs-cur (string-to-number (match-string 2)))
+	  (ds-new (format-time-string "%Y-%m-%d" (current-time) nil))
+	  (vs-new 0)
+	  res)
+      (setq res (concat ds-new "T"))
+      (backward-char 30)
+      (let ((start (point)))
+	(forward-char 20)
+	(delete-region start (point)))
+      (when (string= ds-cur ds-new)
+	(setq vs-new vs-cur))
+      (setq vs-new (1+ vs-new))
+      (setq res (concat res (format "%02d" vs-new) ":00:00Z"))
+      (insert res)
+      (search-forward-regexp "<meta property=\"dcterms:modified\">[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:00:00Z</meta>")
+      (backward-char 27)
+      (let ((start (point)))
+	(forward-char 20)
+	(delete-region start (point)))
+      (insert res))))
+
+(defun update-lilypond-header-fields ()
+  "Update the version and lastupdated fields in the LilyPond header block."
+  (interactive "*")
+  (let ((case-fold-search nil))
+    (goto-char (point-min))
+    (search-forward-regexp "lastupdated[ \t]*=[ \t]*\"")
+    (let ((start (point)))
+      (search-forward "\"")
+      (backward-char)
+      (delete-region start (point)))
+    (let ((ts (format-time-string "%d-%b-%Y" (current-time) nil)))
+      (insert ts))
+    (goto-char (point-min))
+    (search-forward-regexp "version[ \t]*=[ \t]*\"")
+    (search-forward "\"")
+    (backward-char)
+    (skip-chars-backward "0123456789")
+    (let ((start (point))
+	  (num (number-at-point)))
+      (skip-chars-forward "0123456789")
+      (delete-region start (point))
+      (if (numberp num)
+	  (progn
+	    (insert (number-to-string (1+ num))))
+	(progn
+	  (insert "1"))))))
+
+(defun replace-next-hyphen-with-mdash ()
+  "Replace the next ASCII hyphen with the Unicode EM DASH character."
+  (interactive "*")
+  (search-forward "-")
+  (delete-char -1)
+  (insert "\u2014"))
+
+(defun replace-next-pair-doublequotes ()
+  "Replace the next pair of ASCII double quotes with Unicode characters."
+  (interactive "*")
+  (search-forward "\"")
+  (delete-char -1)
+  (insert "\u201C")
+  (search-forward "\"")
+  (delete-char -1)
+  (insert "\u201D"))
+
+(defun replace-next-pair-singlequotes ()
+  "Replace the next pair of ASCII single quotes with Unicode characters."
+  (interactive "*")
+  (search-forward "'")
+  (delete-char -1)
+  (insert "\u2018")
+  (search-forward "'")
+  (delete-char -1)
+  (insert "\u2019"))
+
+
+;; **********************************************************************
+;; Colour theme definition
+
+(deftheme zapgroup-borland
+  "Defines a colour theme inspired by the traditional Borland IDE tools.
+This hand-tuned colour theme recalls the traditional Borland IDE
+tools, presenting you with predominantly light grey text on a
+dark blue or black background.
+
+The theme supports displays with 24-bit colour (including X11,
+Windows and MacOS), as well as those with 256 colours, 16 colours
+or eight colours.  Those with 16 or 8 colours are assumed to
+support bold, underline and inverse-video attributes, as well as
+optionally italic.  Monochrome and greyscale displays (such as a
+real VT420 serial terminal or an old-fashioned X11 terminal) are
+also supported; these are expected to support bold, underline and
+inverse-video.
+
+Note that some colours are also set in ~/.Xresources to minimise
+flashing of the display when starting Emacs.  For the same
+reason, the fonts used, along with their sizes, are also listed
+in that file.
+
+You may display the current set of faces known to Emacs by
+running `list-faces-display'.  The current set of colours
+currently supported may be displayed using `list-colors-display'.
+An individual face may be examined using `describe-face'.")
+
+;; The list of faces was generated in part by using egrep to search for
+;; `\((defface |defcustom .*face|defvar .*face)' in the Emacs source
+;; code.  Note that some of the faces thus returned are actually
+;; variables, not true faces: where required, these are listed in the
+;; `custom-theme-set-variables' invocation later in this file.
+;;
+;; The order of faces is the same as in each source code file.  The order
+;; of files is: first, faces.el; second, font-lock.el; next, files from
+;; the Emacs "lisp" source directory in breadth-first alphabetical order;
+;; followed by files from ELPA and MELPA respectively, also in
+;; breadth-first order.
+
+(custom-theme-set-faces
+ 'zapgroup-borland
+
+ ;; ----------------------------------------------------------------------
+ ;; Standard font faces from faces.el
+
+ '(default
+   ;; See also settings in .Xresources
+    ((default .
+       (:width normal :weight normal :slant normal :underline nil
+	:overline nil :strike-through nil :box nil :inverse-video nil
+	:stipple nil))
+
+     (((type tty) (class color) (min-colors 256)) .
+      ;; Make sure TTY backgrounds are black: an important visual cue
+      ;; that the mouse does not work the same as in a graphical client
+      (:foreground "#C0C0C0" :background "black"))
+     (((type tty) (class color) (min-colors 8)) .
+      (:foreground "white" :background "black"))
+     (((type tty) (class mono)) .
+      nil)
+
+     ;; Note that Microsoft Windows and macOS ignore .Xresources
+     (((type w32)) .
+      (:family "Hack" :height 140
+       :foreground "#C0C0C0" :background "#000040"))
+     (((type ns)) .
+      (:family "Hack" :height 180
+       :foreground "#C0C0C0" :background "#000040"))
+
+     ;; These settings should be synchronised with those in .Xresources
+     (((class color) (min-colors 256)) .
+      (:family "Hack" :height 140
+       :foreground "#C0C0C0" :background "#000040"))
+     (((class color) (min-colors 8)) .
+      (:family "Hack" :height 140
+       :foreground "white" :background "black"))
+     (((class grayscale)) .
+      (:family "Hack" :height 140
+       :foreground "gray90" :background "black"))
+     (((class mono)) .
+      nil)))
+
+ ;; bold		- use default in faces.el
+ ;; italic		- use default in faces.el
+ ;; bold-italic		- use default in faces.el
+ ;; underline		- use default in faces.el
+
+ '(fixed-pitch					; Default is "Monospace"
+   ;; See also settings in .Xresources
+   ((t . (:family "Hack"))))
+
+ '(fixed-pitch-serif				; Default is "Monospace Serif"
+   ;; See also settings in .Xresources
+   ((t . (:family "Courier New"))))
+
+ '(variable-pitch				; Default is "Sans Serif"
+   ;; See also settings in .Xresources
+   ((((type w32 ns)) .
+     (:family "Arial" :foundry "outline"))
+    (t . (:family "Noto Sans"))))
+
+ '(shadow
+   ((((class color) (min-colors 256)) .
+     (:foreground "#808080"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightblack"))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :weight bold))
+    (((class grayscale)) .
+     (:foreground "gray50"))
+    (((class mono)) .
+     nil)))
+
+ '(link
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00C0FF" :underline t))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan" :underline t))
+    (((class grayscale mono)) .
+     (:inherit underline))))
+
+ '(link-visited
+   ((((class color) (min-colors 256)) .
+     (:foreground "#C000FF" :underline t))
+    (((class color) (min-colors 8)) .
+     (:foreground "magenta" :underline t))
+    (((class grayscale mono)) .
+     (:inherit underline))))
+
+ '(highlight
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :background "#0000C0" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :background "blue" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold :inverse-video t))))
+
+ '(region
+   ((((class color) (min-colors 256)) .
+     (:background "#000080"))
+    (((class color) (min-colors 8)) .
+     (:background "blue"))
+    (((class grayscale)) .
+     (:background "gray40"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(secondary-selection
+   ((((class color) (min-colors 256)) .
+     (:background "#004080"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan" :background "blue"))
+    (((class grayscale)) .
+     (:background "gray30"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(trailing-whitespace
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#FF0000" :underline t))
+    (((class color) (min-colors 256)) .
+     (:foreground "#FF0000" :background "#000060" :underline t))
+    (((class color) (min-colors 8)) .
+     (:foreground "red" :underline t))
+    (((class grayscale mono)) .
+     (:inherit underline))))
+
+ '(line-number				; Emacs 26.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#606060" :background "#000000" :weight light :slant normal))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightblack" :background "black" :weight normal :slant normal))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "black" :weight bold :slant normal))
+    (((class grayscale)) .
+     (:foreground "gray40" :background "black" :weight light :slant normal))
+    (((class mono)) .
+     (:weight normal :slant normal :inverse-video t))))
+
+ '(line-number-current-line		; Emacs 26.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#808080" :background "#000060" :weight bold :slant normal))
+    (((class grayscale)) .
+     (:foreground "gray50" :background "black" :weight bold :slant normal))
+    (t . (:inherit line-number :weight bold))))
+
+ '(escape-glyph
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00FFFF"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightcyan"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale)) .
+     (:foreground "gray75"))
+    (((class mono)) .
+     (:inherit underline))))
+
+ '(homoglyph				; Emacs 26.1 and later
+   ((t . (:inherit escape-glyph))))
+
+ '(nobreak-space
+   ((t . (:inherit (escape-glyph underline)))))
+
+ '(nobreak-hyphen			; Emacs 26.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#C000C0"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightmagenta"))
+    (((class color) (min-colors 8)) .
+     (:foreground "magenta"))
+    (((class grayscale)) .
+     (:foreground "gray75"))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(mode-line
+   ((((class color) (min-colors 256)) .
+     (:foreground "#000000" :background "#F0F0F0"
+      :box (:line-width -1 :style released-button)))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "white"))
+    (((class grayscale)) .
+     (:foreground "black" :background "gray95"
+      :box (:line-width -1 :style released-button)))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(mode-line-inactive
+   ((((class color) (min-colors 256)) .
+     (:foreground "#F0F0F0" :background "#707070" :weight light
+      :box (:line-width -1 :color "#808080" :style nil)))
+    (((class color) (min-colors 16)) .
+     (:foreground "white" :background "brightblack"))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "white"))
+    (((class grayscale)) .
+     (:foreground "gray95" :background "gray45"
+      :box (:line-width -1 :color "gray50" :style nil)))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(mode-line-highlight
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#909090"
+      :box (:line-width 2 :color "#A0A0A0" :style released-button)))
+    (((class color) (min-colors 16)) .
+     (:foreground "white" :background "brightblack"))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "white" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray55"
+      :box (:line-width 2 :color "gray65" :style released-button)))
+    (((class mono)) .
+     (:weight bold :inverse-video t))))
+
+ '(mode-line-emphasis
+   ((t . (:weight bold))))
+
+ '(mode-line-buffer-id
+   ((t . (:weight bold))))
+
+ '(header-line
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#404040"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightwhite" :background "black" :underline t))
+    (((class color) (min-colors 8)) .
+     (:foreground "white" :background "black" :underline t))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray25"))
+    (((class mono)) .
+     (:inherit underline))))
+
+ '(header-line-highlight		; Emacs 26.1 and later
+   ((t . (:weight bold))))
+
+ '(vertical-border
+   ((t . (:inherit mode-line-inactive))))
+
+ '(window-divider			; Emacs 24.4 and later
+   ((t . (:foreground "#808080"))))
+
+ '(window-divider-first-pixel		; Emacs 24.4 and later
+   ((t . (:foreground "#C0C0C0"))))
+
+ '(window-divider-last-pixel		; Emacs 24.4 and later
+   ((t . (:foreground "#404040"))))
+
+ '(internal-border			; Emacs 26.1 and later
+   ((t . (:foreground "#000000" :background "#EFEFEF"))))
+
+ '(minibuffer-prompt
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00FFFF"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightcyan"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale)) .
+     (:foreground "gray75"))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(fringe
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :background "#000000"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightyellow" :background "black"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :background "black" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :background "black" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(scroll-bar
+   ;; See also settings in .Xresources
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#F0F0F0"))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray95"))
+    (t . nil)))
+
+ '(border
+   ;; See also settings in .Xresources
+   ((((class color) (min-colors 256)) .
+     (:foreground "#000000" :background "#F0F0F0"))
+    (((class grayscale)) .
+     (:foreground "black" :background "gray95"))
+    (t . nil)))
+
+ '(cursor
+   ((((class color) (min-colors 256)) .
+     (:background "#FFFF00"))
+    (((class color) (min-colors 8)) .
+     (:background "yellow"))
+    (((class grayscale)) .
+     (:background "gray95"))
+    (((class mono)) .
+     nil)))
+
+ '(mouse
+   ((t . (:foreground "black" :background "white"))))
+
+ '(tool-bar
+   ((((class color) (min-colors 256)) .
+     (:foreground "#000000" :background "#F0F0F0"))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "white"))
+    (((class grayscale)) .
+     (:foreground "black" :background "gray95"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(menu
+   ;; See also settings in .Xresources
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :background "#0000C0"))
+    (((class color) (min-colors 256)) .
+     (:foreground "#000000" :background "#F0F0F0"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightyellow" :background "blue"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :background "blue"))
+    (((class grayscale)) .
+     (:foreground "gray90" :background "gray30"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(help-argument-name
+   ((t . (:inherit italic))))
+
+ '(glyphless-char			; Emacs 24.1 and later
+   ;; This face is the same as nobreak-hyphen with the addition of
+   ;; underline, but cannot inherit from that face as it is not present
+   ;; in versions of Emacs before 26.1.
+   ((((class color) (min-colors 256)) .
+     (:foreground "#C000C0" :underline t))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightmagenta" :underline t))
+    (((class color) (min-colors 8)) .
+     (:foreground "magenta" :underline t))
+    (((class grayscale)) .
+     (:foreground "gray75" :underline t))
+    (((class mono)) .
+     (:inherit underline :weight bold))))
+
+ '(error				; Emacs 24.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FF0000" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "red" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(warning				; Emacs 24.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FF8000" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight normal))
+    (((class grayscale)) .
+     (:foreground "gray90" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(success				; Emacs 24.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00FF00" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "green" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(read-multiple-choice-face		; Emacs 26.1 and later
+   ((t . (:inherit underline :weight bold))))
+
+ '(tty-menu-enabled-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :background "#0000C0"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :background "blue"))
+    (((class grayscale)) .
+     (:foreground "gray90" :background "gray30"))
+    (((class mono)) .
+     (:weight bold :inverse-video t))))
+
+ '(tty-menu-disabled-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#808080" :background "#0000C0"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightblack" :background "blue"))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "blue"))
+    (((class grayscale)) .
+     (:foreground "gray50" :background "gray30"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(tty-menu-selected-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "0000C0" :background "#FFFF00"))
+    (((class color) (min-colors 8)) .
+     (:foreground "blue" :background "yellow"))
+    (((class grayscale)) .
+     (:foreground "gray30" :background "gray90"))
+    (((class mono)) .
+     (:inverse-video nil))))
+
+ '(show-paren-match
+   ((((class color) (min-colors 256)) .
+     (:background "#0080C0"))
+    (((class color) (min-colors 8)) .
+     (:background "cyan"))
+    (((class grayscale)) .
+     (:background "gray50"))
+    (((class mono)) .
+     (:inherit underline))))
+
+ '(show-paren-match-expression		; Emacs 26.1 and later
+   ((t . (:inherit show-paren-match))))
+
+ '(show-paren-mismatch
+   ((((class color) (min-colors 256)) .
+     (:background "#800080"))
+    (((class color) (min-colors 8)) .
+     (:background "magenta"))
+    (((class grayscale mono)) .
+     (:inverse-video t))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Syntax highlighting font faces from font-lock.el
+
+ '(font-lock-comment-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#808080" :slant italic))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightblack" :slant italic))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :weight bold :slant italic))
+    (((class grayscale)) .
+     (:foreground "gray50" :slant italic))
+    (((class mono)) .
+     (:slant italic))))
+
+ '(font-lock-comment-delimiter-face
+   ((t . (:inherit font-lock-comment-face))))
+
+ '(font-lock-string-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00C0FF"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(font-lock-doc-face
+   ((t . (:inherit font-lock-string-face))))
+
+ '(font-lock-keyword-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFC0"))
+    (((class color grayscale) (min-colors 8)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(font-lock-builtin-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF"))
+    (((class color grayscale) (min-colors 8)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(font-lock-function-name-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00FFFF" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan" :weight bold))
+    (((class grayscale mono)) .
+     (:inherit underline :weight bold))))
+
+ '(font-lock-variable-name-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF80"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale)) .
+     (:foreground "white"))
+    (((class mono)) .
+     (:slant italic))))
+
+ '(font-lock-type-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#C0C080"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightwhite"))
+    (((class color) (min-colors 8)) .
+     (:foreground "white"))
+    (((class grayscale mono)) .
+    nil)))
+
+ '(font-lock-constant-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#0080C0"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightblue"))
+    (((class color) (min-colors 8)) .
+     (:foreground "blue" :weight bold))
+    (((class grayscale mono)) .
+     (:inherit underline))))
+
+ '(font-lock-warning-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FF4040"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightred"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(font-lock-negation-char-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF80" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(font-lock-preprocessor-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#40C040"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green"))
+    (((class grayscale)) .
+     (:foreground "gray75" :slant italic))
+    (((class mono)) .
+     (:inherit italic :weight bold))))
+
+ '(font-lock-regexp-grouping-backslash
+   ((((class color) (min-colors 256)) .
+     (:foreground "#80FFFF" :weight bold))
+    (t . (:weight bold))))
+
+ '(font-lock-regexp-grouping-construct
+   ((t . (:inherit font-lock-regexp-grouping-backslash))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from hexl.el
+
+ '(hexl-address-region
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#000040"))
+    (((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#000060"))
+    (((class color) (min-colors 8)) .
+     (:foreground "white" :background "black" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray25"))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(hexl-ascii-region
+   ((t . (:inherit hexl-address-region))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from info.el
+
+ '(info-node
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :weight bold :slant italic))
+    (((class color) (min-colors 8)) .
+     (:foreground "white" :weight bold :slant italic))
+    (((class grayscale)) .
+     (:foreground "#FFFFFF" :weight bold :slant italic))
+    (((class mono)) .
+     (:weight bold :slant italic))))
+
+ '(info-title-1
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :weight bold))
+    (((type tty) (class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((type tty)) .
+     (:weight bold))
+    (((class color grayscale)) .
+     (:foreground "#FFFFFF" :height 1.2 :inherit info-title-2))
+    (t . (:height 1.2 :inherit info-title-2))))
+
+ '(info-title-2
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#00FFFF" :weight bold))
+    (((type tty) (class color) (min-colors 8)) .
+     (:foreground "cyan" :weight bold))
+    (((type tty)) .
+     (:weight bold))
+    (((class color grayscale)) .
+     (:foreground "#FFFFFF" :height 1.2 :inherit info-title-3))
+    (t . (:height 1.2 :inherit info-title-3))))
+
+ '(info-title-3
+   ((((type tty)) .
+     (:weight bold))
+    (t . (:height 1.2 :inherit info-title-4))))
+
+ '(info-title-4
+   ((((type tty)) .
+     (:weight bold))
+    (t . (:weight bold :inherit variable-pitch))))
+
+ '(info-menu-header
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :weight bold :underline t))
+    (((type tty) (class color) (min-colors 8)) .
+     (:foreground "white" :weight bold :underline t))
+    (((type tty)) .
+     (:weight bold :underline t))
+    (((class color grayscale)) .
+     (:foreground "#FFFFFF" :weight bold :inherit variable-pitch))
+    (t . (:weight bold :inherit variable-pitch))))
+
+ '(info-menu-star
+   ((t . (:inherit default))))
+
+ ;; info-xref		- use default in info.el
+ ;; info-xref-visited	- use default in info.el
+ ;; info-header-xref	- use default in info.el
+ ;; info-header-node	- use default in info.el
+ ;; info-index-match	- use default in info.el
+ ;; Info-quoted		- use default in info.el
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from isearch.el
+
+ '(isearch
+   ((((class color) (min-colors 256)) .
+     (:foreground "#8B2323" :background "#EE7F9F"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan" :background "magenta"))
+    (((class grayscale mono)) .
+     (:inverse-video t))))
+
+ '(isearch-fail
+   ((((class color) (min-colors 256)) .
+     (:background "#FF0000"))
+    (((class color) (min-colors 8)) .
+     (:background "red"))
+    (((class grayscale)) .
+     (:foreground "gray50"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(lazy-highlight
+   ((((class color) (min-colors 256)) .
+     (:foreground "#8B2323" :background "#668B8B"))
+    (((class color) (min-colors 8)) .
+     (:foreground "magenta" :background "cyan"))
+    (((class grayscale mono)) .
+     (:inherit underline))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from linum.el
+
+ '(linum				; Same as line-number, for older Emacs
+   ;; Although linum has the same definition as line-number, it cannot
+   ;; inherit from it in older versions of Emacs -- possibly due to
+   ;; interactions between `custom-theme-set-faces' and the fact that the
+   ;; face does not yet exist from which to inherit.
+   ((((class color) (min-colors 256)) .
+     (:foreground "#606060" :background "#000000" :weight light :slant normal))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightblack" :background "black" :weight normal :slant normal))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "black" :weight bold :slant normal))
+    (((class grayscale)) .
+     (:foreground "gray25" :background "black" :weight light :slant normal))
+    (((class mono)) .
+     (:weight normal :slant normal :inverse-video t))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from replace.el
+
+ '(query-replace
+   ((t . (:inherit isearch))))
+
+ '(match
+   ((((class color) (min-colors 256)) .
+     (:background "#000080"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightyellow" :background "blue"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :background "blue" :weight bold))
+    (((class grayscale)) .
+     (:background "gray50"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ ;; list-matching-lines-face			- use default in replace.el
+ ;; list-matching-lines-buffer-name-face	- use default in replace.el
+ ;; list-matching-lines-current-line-face	- use default in replace.el
+ ;; list-matching-lines-prefix-face		- use default in replace.el
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from tooltip.el
+
+ '(tooltip
+   ;; See also settings in .Xresources
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FCFCFC" :background "#232627" :inherit variable-pitch))
+    (t . (:inherit variable-pitch))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from nxml/nxml-mode.el
+
+ ;; nxml-delimited-data				- use default in nxml-mode.el
+ ;; nxml-name					- use default in nxml-mode.el
+ ;; nxml-ref					- use default in nxml-mode.el
+ ;; nxml-delimiter				- use default in nxml-mode.el
+ ;; nxml-text					- use default in nxml-mode.el
+ ;; nxml-processing-instruction-delimiter	- use default in nxml-mode.el
+ ;; nxml-processing-instruction-target		- use default in nxml-mode.el
+ ;; nxml-processing-instruction-content		- use default in nxml-mode.el
+ ;; nxml-cdata-section-delimiter		- use default in nxml-mode.el
+ ;; nxml-cdata-section-CDATA			- use default in nxml-mode.el
+ ;; nxml-cdata-section-content			- use default in nxml-mode.el
+ ;; nxml-char-ref-number			- use default in nxml-mode.el
+ ;; nxml-char-ref-delimiter			- use default in nxml-mode.el
+ ;; nxml-entity-ref-name			- use default in nxml-mode.el
+ ;; nxml-entity-ref-delimiter			- use default in nxml-mode.el
+ ;; nxml-tag-delimiter				- use default in nxml-mode.el
+ ;; nxml-tag-slash				- use default in nxml-mode.el
+ ;; nxml-element-prefix				- use default in nxml-mode.el
+ ;; nxml-element-colon				- use default in nxml-mode.el
+ ;; nxml-element-local-name			- use default in nxml-mode.el
+ ;; nxml-attribute-prefix			- use default in nxml-mode.el
+ ;; nxml-attribute-colon			- use default in nxml-mode.el
+ ;; nxml-attribute-local-name			- use default in nxml-mode.el
+ ;; nxml-namespace-attribute-xmlns		- use default in nxml-mode.el
+ ;; nxml-namespace-attribute-colon		- use default in nxml-mode.el
+ ;; nxml-namespace-attribute-prefix		- use default in nxml-mode.el
+ ;; nxml-attribute-value			- use default in nxml-mode.el
+ ;; nxml-attribute-value-delimiter		- use default in nxml-mode.el
+ ;; nxml-prolog-literal-delimiter		- use default in nxml-mode.el
+ ;; nxml-prolog-literal-content			- use default in nxml-mode.el
+ ;; nxml-prolog-keyword				- use default in nxml-mode.el
+ ;; nxml-markup-declaration-delimiter		- use default in nxml-mode.el
+ ;; nxml-hash					- use default in nxml-mode.el
+
+ '(nxml-glyph
+   ((((type tty) (class color) (min-colors 256)) .
+     (:foreground "#000000" :background "#C0C0C0" :weight normal :slant normal))
+    (((type tty) (class color) (min-colors 8)) .
+     (:foreground "black" :background "white" :weight normal :slant normal))
+    (((type tty)) .
+     (:weight normal :slant normal :inverse-video t))
+    (((class color grayscale) (min-colors 256)) .
+     (:foreground "#000000" :background "#C0C0C0" :weight normal :slant normal
+      :inherit fixed-pitch-serif))
+    (((class color grayscale) (min-colors 8)) .
+     (:foreground "black" :background "gray75" :weight normal :slant normal
+      :inherit fixed-pitch-serif))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from progmodes/compile.el:
+
+ ;; compilation-error			- use default in compile.el
+ ;; compilation-warning			- use default in compile.el
+ ;; compilation-info			- use default in compile.el
+
+ '(compilation-mode-line-fail		; Emacs 24.3 and later
+   ((t . (:inherit compilation-error))))
+
+ '(compilation-mode-line-run		; Emacs 24.3 and later
+   ((t . (:inherit compilation-warning))))
+
+ '(compilation-mode-line-exit		; Emacs 24.3 and later
+   ((default .
+      (:inherit compilation-info))
+    (((class color) (min-colors 256)) .
+     (:foreground "#008000" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "green" :weight normal))
+    (((class grayscale)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ ;; compilation-line-number		- use default in compile.el
+ ;; compilation-column-number		- use default in compile.el
+ ;; compilation-message-face		- use default in compile.el
+ ;; compilation-error-face		- use default in compile.el
+ ;; compilation-warning-face		- use default in compile.el
+ ;; compilation-info-face		- use default in compile.el
+ ;; compilation-line-face		- use default in compile.el
+ ;; compilation-column-face		- use default in compile.el
+ ;; compilation-enter-directory-face	- use default in compile.el
+ ;; compilation-leave-directory-face	- use default in compile.el
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from progmodes/cperl-mode.el
+
+ '(cperl-nonoverridable-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFA500" :background "#000060"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray30"))
+    (((class mono)) .
+     nil)))
+
+ '(cperl-array-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFC0" :background "#000080"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray30" :weight bold))
+    (((class mono)) .
+     (:weight bold :slant italic))))
+
+ '(cperl-hash-face
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFC0" :background "#000080" :slant italic))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold :slant italic))
+    (((class grayscale)) .
+     (:foreground "white" :background "gray30" :weight bold :slant italic))
+    (((class mono)) .
+     (:weight bold :slant italic))))
+
+ ;; Some cperl-mode faces are actually custom variables, not faces, and
+ ;; are set in the `custom-theme-set-variables' definition that follows
+ ;; this `custom-theme-set-faces' block.
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from progmodes/make-mode.el
+
+ '(makefile-space
+   ((t . (:inherit trailing-whitespace))))
+
+ '(makefile-targets
+   ((t . (:inherit font-lock-function-name-face))))
+
+ '(makefile-shell
+   nil)
+
+ '(makefile-makepp-perl
+   nil)
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from progmodes/sh-script.el
+
+ '(sh-heredoc
+   ((t . (:inherit font-lock-string-face))))
+
+ '(sh-quoted-exec
+   ((((class color) (min-colors 256)) .
+     (:foreground "#0080FF"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(sh-escaped-newline
+   ((t . (:inherit font-lock-string-face :weight bold))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from progmodes/tcl.el
+
+ '(tcl-escaped-newline
+   ((t . (:inherit font-lock-string-face :weight bold))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from textmodes/rst.el
+
+ ;; rst-block		- use default in rst.el
+ ;; rst-external	- use default in rst.el
+ ;; rst-definition	- use default in rst.el
+ ;; rst-directive	- use default in rst.el
+ ;; rst-comment		- use default in rst.el
+ ;; rst-emphasis1	- use default in rst.el
+ ;; rst-emphasis2	- use default in rst.el
+ ;; rst-literal		- use default in rst.el
+ ;; rst-reference	- use default in rst.el
+ ;; rst-transition	- use default in rst.el
+
+ '(rst-adornment
+   ((t . (:inherit font-lock-comment-face))))
+
+ '(rst-level-1
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((class grayscale)) .
+     (:foreground "white" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(rst-level-2
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00FFFF" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan" :weight bold))
+    (((class grayscale)) .
+     (:foreground "gray75" :weight bold))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(rst-level-3
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF00"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightyellow"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale)) .
+     (:foreground "white"))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(rst-level-4
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00FFFF"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale)) .
+     (:foreground "gray75"))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(rst-level-5
+   ((((class color) (min-colors 256)) .
+     (:foreground "#C0C000"))
+    (((class color) (min-colors 16)) .
+     (:foreground "brightyellow"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale)) .
+     (:foreground "white"))
+    (((class mono)) .
+     (:weight bold))))
+
+ '(rst-level-6
+   ((((class color) (min-colors 256)) .
+     (:foreground "#00C0C0"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale)) .
+     (:foreground "gray75"))
+    (((class mono)) .
+     (:weight bold))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from textmodes/table.el
+
+ '(table-cell
+   ((((class color) (min-colors 256)) .
+     (:background "#000080"))
+    (((class color) (min-colors 8)) .
+     (:background "blue"))
+    (((class grayscale)) .
+     (:background "gray30"))
+    (((class mono)) .
+     (:weight bold))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from vc/diff-mode.el
+
+ '(diff-header
+   ((((class color) (min-colors 256)) .
+     (:foreground "#E0E000" :background "#0000C0"))
+    (((class color) (min-colors 8)) .
+     (:foreground "white" :background "blue" :weight bold))
+    (((class grayscale mono)) .
+     (:inverse-video t))))
+
+ '(diff-file-header
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFF00" :background "#0000C0" :weight bold))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :background "blue" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold :inverse-video t))))
+
+ '(diff-index
+   ((t . (:inherit diff-file-header))))
+
+ '(diff-hunk-header
+   ((t . (:inherit diff-header))))
+
+ '(diff-removed
+   ((((class color) (min-colors 256)) .
+     (:background "#480000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(diff-added
+   ((((class color) (min-colors 256)) .
+     (:background "#004800"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(diff-changed				; Emacs 25.1 and later
+   ((((class color) (min-colors 256)) .
+     (:background "#484800"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(diff-indicator-removed
+   ((default :inherit diff-removed :weight bold)
+    (((class color) (min-colors 256)) .
+     (:foreground "#D80000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red"))
+    (((class grayscale)) .
+     (:foreground "white"))
+    (((class mono)) .
+     nil)))
+
+ '(diff-indicator-added
+   ((default :inherit diff-added :weight bold)
+    (((class color) (min-colors 256)) .
+     (:foreground "#00D800"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green"))
+    (((class grayscale)) .
+     (:foreground "white"))
+    (((class mono)) .
+     nil)))
+
+ '(diff-indicator-changed		; Emacs 25.1 and later
+   ((default :inherit diff-changed :weight bold)
+    (((class color) (min-colors 256)) .
+     (:foreground "#D8D800"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale)) .
+     (:foreground "white"))
+    (((class mono)) .
+     nil)))
+
+ '(diff-function
+   ((t . (:inherit diff-header))))
+
+ '(diff-context				; Emacs 25.1 and later
+   ((t . (:inherit default))))
+
+ '(diff-nonexistent
+   ((t . (:inherit diff-file-header))))
+
+ '(diff-refine-changed			; Emacs 25.1 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#B0B000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(diff-refine-removed			; Emacs 24.3 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#B00000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(diff-refine-added			; Emacs 24.3 and later
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#00B000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from vc/ediff-init.el
+
+ '(ediff-current-diff-A
+   ((((class color) (min-colors 256)) .
+     (:background "#600000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-current-diff-B
+   ((((class color) (min-colors 256)) .
+     (:background "#006000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-current-diff-C
+   ((((class color) (min-colors 256)) .
+     (:background "#606000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-current-diff-Ancestor
+   ((((class color) (min-colors 256)) .
+     (:background "#006060"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-fine-diff-A			; Same as diff-refine-removed
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#B00000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(ediff-fine-diff-B			; Same as diff-refine-added
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#00B000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(ediff-fine-diff-C			; Same as diff-refine-changed
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#B0B000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(ediff-fine-diff-Ancestor
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#00B0B0"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(ediff-even-diff-A
+   ((((class color) (min-colors 256)) .
+     (:background "#300000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-even-diff-B
+   ((((class color) (min-colors 256)) .
+     (:background "#003000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-even-diff-C
+   ((((class color) (min-colors 256)) .
+     (:background "#303000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-even-diff-Ancestor
+   ((((class color) (min-colors 256)) .
+     (:background "#003030"))
+    (((class color) (min-colors 8)) .
+     (:foreground "cyan"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(ediff-odd-diff-A
+   ((t . (:inherit ediff-even-diff-A))))
+
+ '(ediff-odd-diff-B
+   ((t . (:inherit ediff-even-diff-B))))
+
+ '(ediff-odd-diff-C
+   ((t . (:inherit ediff-even-diff-C))))
+
+ '(ediff-odd-diff-Ancestor
+   ((t . (:inherit ediff-even-diff-Ancestor))))
+
+ ;; ---------------------------------------------------------------------
+ ;; Font faces from vc/smerge-mode.el
+
+ '(smerge-mine				; Same as diff-removed
+   ((((class color) (min-colors 256)) .
+     (:background "#480000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(smerge-other				; Same as diff-added
+   ((((class color) (min-colors 256)) .
+     (:background "#004800"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(smerge-base				; Same as ediff-current-diff-C
+   ((((class color) (min-colors 256)) .
+     (:background "#606000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow"))
+    (((class grayscale mono)) .
+     nil)))
+
+ '(smerge-markers
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#404040"))
+    (((class color) (min-colors 8)) .
+     (:foreground "black" :background "white"))
+    (((class grayscale)) .
+     (:foreground "black" :background "gray90"))
+    (((class mono)) .
+     (:inverse-video t))))
+
+ '(smerge-refined-change		; Same as diff-refine-changed
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#B0B000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "yellow" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(smerge-refined-removed		; Same as diff-refine-removed
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#B00000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "red" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ '(smerge-refined-added			; Same as diff-refine-added
+   ((((class color) (min-colors 256)) .
+     (:foreground "#FFFFFF" :background "#00B000"))
+    (((class color) (min-colors 8)) .
+     (:foreground "green" :weight bold))
+    (((class grayscale mono)) .
+     (:weight bold))))
+
+ ;; ----------------------------------------------------------------------
+ ;; Font faces from MELPA's python-mode.el
+
+ ;; py-XXX-tag-face		- use default in python-mode.el
+
+ '(py-pseudo-keyword-face
+   ((t . (:inherit font-lock-constant-face))))
+
+ ;; py-object-reference-face	- use default in python-mode.el
+
+ '(py-variable-name-face
+   ((t . (:inherit font-lock-variable-name-face))))
+
+ ;; py-number-face		- use default in python-mode.el
+ ;; py-try-if-face		- use default in python-mode.el
+ ;; py-import-from-face		- use default in python-mode.el
+ ;; py-def-class-face		- use default in python-mode.el
+ ;; py-decorators-face		- use default in python-mode.el
+ ;; py-builtins-face		- use default in python-mode.el
+ ;; py-class-name-face		- use default in python-mode.el
+ ;; py-exception-name-face	- use default in python-mode.el
+
+ ;; ----------------------------------------------------------------------
+ ;; Font faces from MELPA's yaml-mode.el
+
+ '(yaml-tab-face
+   ((t . (:inherit trailing-whitespace))))
+
+ ;; ----------------------------------------------------------------------
+ ;; Emacs distribution-supplied font faces not customised
+
+ ;; apropos.el:
+ ;;   apropos-symbol, apropos-keybinding, apropos-property,
+ ;;   apropos-function-button, apropos-variable-button,
+ ;;   apropos-user-option-button, apropos-misc-button, apropos-match-face
+
+ ;; bookmark.el:
+ ;;   bookmark-menu-bookmark, bookmark-menu-heading
+
+ ;; buff-menu.el:
+ ;;   buffer-menu-buffer
+
+ ;; button.el:
+ ;;   button
+
+ ;; comint.el:
+ ;;   comint-highlight-input, comint-highlight-prompt
+
+ ;; cus-edit.el:
+ ;;   custom-invalid, custom-rogue, custom-modified, custom-set,
+ ;;   custom-changed, custom-themed, custom-saved, custom-button,
+ ;;   custom-button-mouse, custom-button-unraised, custom-button-pressed,
+ ;;   custom-button-pressed-unraised, custom-documentation, custom-state,
+ ;;   custom-link, custom-comment, custom-comment-tag,
+ ;;   custom-variable-obsolete, custom-variable-tag,
+ ;;   custom-variable-button, custom-visibility, custom-face-tag,
+ ;;   custom-group-tag-1, custom-group-tag, custom-group-subtitle
+
+ ;; dired.el:
+ ;;   dired-header, dired-mark, dired-marked, dired-flagged,
+ ;;   dired-warning, dired-perm-write, dired-directory, dired-symlink,
+ ;;   dired-ignored
+
+ ;; ffap.el:
+ ;;   ffap
+
+ ;; generic-x.el:
+ ;;   show-tabs-tab, show-tabs-space
+
+ ;; hilit-chg.el:
+ ;;   highlight-changes, highlight-changes-delete
+
+ ;; hi-lock.el:
+ ;;   hi-yellow, hi-pink, hi-green, hi-blue, hi-salmon, hi-aquamarine,
+ ;;   hi-black-b, hi-blue-b, hi-green-b, hi-red-b, hi-black-hb
+
+ ;; hl-line.el:
+ ;;   hl-line
+
+ ;; ibuffer.el:
+ ;;   ibuffer-locked-buffer, ibuffer-marked-face, ibuffer-deletion-face,
+ ;;   ibuffer-title-face, ibuffer-filter-group-name-face
+
+ ;; icomplete.el:
+ ;;   icomplete-first-match
+
+ ;; ido.el:
+ ;;   ido-first-match, ido-only-match, ido-subdir, ido-virtual,
+ ;;   ido-indicator, ido-incomplete-regexp
+
+ ;; info-look.el:
+ ;;   info-lookup-highlight-face
+
+ ;; locate.el:
+ ;;   locate-header-face
+
+ ;; man.el:
+ ;;   Man-overstrike, Man-underline, Man-reverse
+
+ ;; minibuffer.el:
+ ;;   completions-annotations, completions-first-difference,
+ ;;   completions-common-part
+
+ ;; mouse.el:
+ ;;   mouse-drag-and-drop-region
+
+ ;; outline.el:
+ ;;   outline-1, outline-2, outline-3, outline-4, outline-5, outline-6,
+ ;;   outline-7, outline-8
+
+ ;; proced.el:
+ ;;   proced-mark, proced-marked, proced-sort-header
+
+ ;; rect.el:
+ ;;   rectangle-preview
+
+ ;; rfn-eshadow.el:
+ ;;   file-name-shadow
+
+ ;; ruler-mode.el:
+ ;;   ruler-mode-default, ruler-mode-pad, ruler-mode-margins,
+ ;;   ruler-mode-fringes, ruler-mode-column-number,
+ ;;   ruler-mode-fill-column, ruler-mode-comment-column,
+ ;;   ruler-mode-goal-column, ruler-mode-tab-stop,
+ ;;   ruler-mode-current-column
+
+ ;; simple.el:
+ ;;   next-error
+
+ ;; speedbar.el:
+ ;;   speedbar-button-face, speedbar-file-face, speedbar-directory-face,
+ ;;   speedbar-tag-face, speedbar-selected-face, speedbar-highlight-face,
+ ;;   speedbar-separator-face
+
+ ;; strokes.el:
+ ;;   strokes-char
+
+ ;; term.el:
+ ;;   term, term-bold, term-underline, term-color-black, term-color-red,
+ ;;   term-color-green, term-color-yellow, term-color-blue,
+ ;;   term-color-magenta, term-color-cyan, term-color-white
+
+ ;; tmm.el:
+ ;;   tmm-inactive
+
+ ;; tutorial.el:
+ ;;   tutorial-warning-face
+
+ ;; vcursor.el:
+ ;;   vcursor
+
+ ;; view.el:
+ ;;   view-highlight-face
+
+ ;; whitespace.el:
+ ;;   whitespace-space, whitespace-hspace, whitespace-tab,
+ ;;   whitespace-newline, whitespace-trailing, whitespace-line,
+ ;;   whitespace-space-before-tab, whitespace-indentation,
+ ;;   whitespace-big-indent, whitespace-empty, whitespace-space-after-tab
+
+ ;; wid-edit.el:
+ ;;   widget-documentation, widget-button, widget-mouse-face,
+ ;;   widget-field, widget-single-line-field, widget-inactive,
+ ;;   widget-button-pressed
+
+ ;; woman.el:
+ ;;   woman-italic, woman-bold, woman-unknown, woman-addition
+
+ ;; calc/calc.el:
+ ;;   calc-nonselected-face, calc-selected-face
+
+ ;; calendar/calendar.el:
+ ;;   calendar-today, diary, holiday, calendar-weekday-header,
+ ;;   calendar-weekend-header, calendar-month-header
+
+ ;; calendar/diary-lib.el:
+ ;;   diary-anniversary, diary-time, diary-button, diary-face-attrs
+
+ ;; calendar/todo-mode.el:
+ ;;   todo-key-prompt, todo-mark, todo-prefix-string, todo-top-priority,
+ ;;   todo-nondiary, todo-date, todo-time, todo-diary-expired,
+ ;;   todo-done-sep, todo-done, todo-comment, todo-search, todo-button,
+ ;;   todo-sorted-column, todo-archived-only, todo-category-string,
+ ;;   todo-nondiary-face, todo-date-face, todo-time-face,
+ ;;   todo-diary-expired-face, todo-done-sep-face, todo-done-face,
+ ;;   todo-comment-face, todo-category-string-face
+
+ ;; cedet/pulse.el:
+ ;;   pulse-highlight-start-face, pulse-highlight-face
+
+ ;; cedet/semantic/complete.el:
+ ;;   semantic-complete-inline-face
+
+ ;; cedet/semantic/decorate/include.el:
+ ;;   semantic-decoration-on-unknown-includes,
+ ;;   semantic-decoration-on-fileless-includes,
+ ;;   semantic-decoration-on-unparsed-includes,
+ ;;   semantic-decoration-on-includes
+
+ ;; cedet/semantic/decorate/mode.el:
+ ;;   semantic-tag-boundary-face,
+ ;;   semantic-decoration-on-private-members-face,
+ ;;   semantic-decoration-on-protected-members-face
+
+ ;; cedet/semantic/idle.el:
+ ;;   semantic-idle-symbol-highlight
+
+ ;; cedet/semantic/senator.el:
+ ;;   senator-momentary-highlight-face
+
+ ;; cedet/semantic/util-modes.el:
+ ;;   semantic-highlight-edits-face, semantic-unmatched-syntax-face,
+ ;;   semantic-highlight-func-current-tag-face
+
+ ;; cedet/srecode/fields.el:
+ ;;   srecode-field-face
+
+ ;; cedet/srecode/srt-mode.el:
+ ;;   srecode-separator-face
+
+ ;; epa.el:
+ ;;   epa-string, epa-mark, epa-field-name, epa-field-body,
+ ;;   epa-validity-high, epa-validity-medium, epa-validity-low,
+ ;;   epa-validity-disabled
+
+ ;; emacs-lisp/eieio-custom.el:
+ ;;   eieio-custom-slot-tag-face
+
+ ;; emacs-lisp/eldoc.el:
+ ;;   eldoc-highlight-function-argument
+
+ ;; emacs-lisp/ert.el:
+ ;;   ert-test-result-expected, ert-test-result-unexpected
+
+ ;; emacs-lisp/package.el:
+ ;;   package-help-section-name, package-name, package-description,
+ ;;   package-status-built-in, package-status-external,
+ ;;   package-status-available, package-status-new, package-status-held,
+ ;;   package-status-disabled, package-status-installed,
+ ;;   package-status-dependency, package-status-unsigned,
+ ;;   package-status-incompat, package-status-avail-obso
+
+ ;; emacs-lisp/re-builder.el:
+ ;;   reb-match-0, reb-match-1, reb-match-2, reb-match-3
+
+ ;; emacs-lisp/testcover.el:
+ ;;   testcover-nohits, testcover-1value
+
+ ;; emulation/cua-base.el:
+ ;;   cua-rectangle, cua-rectangle-noselect, cua-global-mark
+
+ ;; emulation/viper-init.el:
+ ;;   viper-search, viper-replace-overlay, viper-minibuffer-emacs,
+ ;;   viper-minibuffer-insert, viper-minibuffer-vi
+
+ ;; erc/erc-button.el:
+ ;;   erc-button
+
+ ;; erc/erc-capab.el:
+ ;;   erc-capab-identify-unidentified
+
+ ;; erc/erc.el:
+ ;;   erc-default-face, erc-nick-prefix-face, erc-my-nick-prefix-face,
+ ;;   erc-direct-msg-face, erc-header-line, erc-input-face,
+ ;;   erc-prompt-face, erc-command-indicator-face, erc-notice-face,
+ ;;   erc-action-face, erc-error-face, erc-my-nick-face,
+ ;;   erc-nick-default-face, erc-nick-msg-face
+
+ ;; erc/erc-goodies.el:
+ ;;   erc-bold-face, erc-inverse-face, erc-underline-face,
+ ;;   fg:erc-color-face0, fg:erc-color-face1, fg:erc-color-face2,
+ ;;   fg:erc-color-face3, fg:erc-color-face4, fg:erc-color-face5,
+ ;;   fg:erc-color-face6, fg:erc-color-face7, fg:erc-color-face8,
+ ;;   fg:erc-color-face9, fg:erc-color-face10, fg:erc-color-face11,
+ ;;   fg:erc-color-face12, fg:erc-color-face13, fg:erc-color-face14,
+ ;;   fg:erc-color-face15, bg:erc-color-face0, bg:erc-color-face1,
+ ;;   bg:erc-color-face2, bg:erc-color-face3, bg:erc-color-face4,
+ ;;   bg:erc-color-face5, bg:erc-color-face6, bg:erc-color-face7,
+ ;;   bg:erc-color-face8, bg:erc-color-face9, bg:erc-color-face10,
+ ;;   bg:erc-color-face11, bg:erc-color-face12, bg:erc-color-face13,
+ ;;   bg:erc-color-face14, bg:erc-color-face15
+
+ ;; erc/erc-match.el:
+ ;;   erc-current-nick-face, erc-dangerous-host-face, erc-pal-face,
+ ;;   erc-fool-face, erc-keyword-face
+
+ ;; erc/erc-stamp.el:
+ ;;   erc-timestamp-face
+
+ ;; eshell/em-ls.el:
+ ;;   eshell-ls-directory, eshell-ls-symlink, eshell-ls-executable,
+ ;;   eshell-ls-readonly, eshell-ls-unreadable, eshell-ls-special,
+ ;;   eshell-ls-missing, eshell-ls-archive, eshell-ls-backup,
+ ;;   eshell-ls-product, eshell-ls-clutter
+
+ ;; eshell/em-prompt.el:
+ ;;   eshell-prompt
+
+ ;; gnus/gnus-art.el:
+ ;;   gnus-emphasis-bold, gnus-emphasis-italic, gnus-emphasis-underline,
+ ;;   gnus-emphasis-underline-bold, gnus-emphasis-underline-italic,
+ ;;   gnus-emphasis-bold-italic, gnus-emphasis-underline-bold-italic,
+ ;;   gnus-emphasis-strikethru, gnus-emphasis-highlight-words,
+ ;;   gnus-button, gnus-signature, gnus-header-from, gnus-header-subject,
+ ;;   gnus-header-newsgroups, gnus-header-name, gnus-header-content
+
+ ;; gnus/gnus-bookmark.el:
+ ;;   gnus-bookmark-menu-heading
+
+ ;; gnus/gnus-cite.el:
+ ;;   gnus-cite-attribution, gnus-cite-1, gnus-cite-2, gnus-cite-3,
+ ;;   gnus-cite-4, gnus-cite-5, gnus-cite-6, gnus-cite-7, gnus-cite-8,
+ ;;   gnus-cite-9, gnus-cite-10, gnus-cite-11
+
+ ;; gnus/gnus.el:
+ ;;   gnus-group-news-1-empty, gnus-group-news-1,
+ ;;   gnus-group-news-2-empty, gnus-group-news-2,
+ ;;   gnus-group-news-3-empty, gnus-group-news-3,
+ ;;   gnus-group-news-4-empty, gnus-group-news-4,
+ ;;   gnus-group-news-5-empty, gnus-group-news-5,
+ ;;   gnus-group-news-6-empty, gnus-group-news-6,
+ ;;   gnus-group-news-low-empty, gnus-group-news-low,
+ ;;   gnus-group-mail-1-empty, gnus-group-mail-1,
+ ;;   gnus-group-mail-2-empty, gnus-group-mail-2,
+ ;;   gnus-group-mail-3-empty, gnus-group-mail-3,
+ ;;   gnus-group-mail-low-empty, gnus-group-mail-low,
+ ;;   gnus-summary-selected, gnus-summary-cancelled,
+ ;;   gnus-summary-normal-ticked, gnus-summary-high-ticked,
+ ;;   gnus-summary-low-ticked, gnus-summary-normal-ancient,
+ ;;   gnus-summary-high-ancient, gnus-summary-low-ancient,
+ ;;   gnus-summary-normal-undownloaded, gnus-summary-high-undownloaded,
+ ;;   gnus-summary-low-undownloaded, gnus-summary-normal-unread,
+ ;;   gnus-summary-high-unread, gnus-summary-low-unread,
+ ;;   gnus-summary-normal-read, gnus-summary-high-read,
+ ;;   gnus-summary-low-read, gnus-splash
+
+ ;; gnus/gnus-fun.el:
+ ;;   gnus-x-face
+
+ ;; gnus/gnus-salt.el:
+ ;;   gnus-selected-tree-face, gnus-mouse-face-0, gnus-mouse-face-1,
+ ;;   gnus-mouse-face-2, gnus-mouse-face-3, gnus-mouse-face-4,
+ ;;   gnus-face-0, gnus-face-1, gnus-face-2, gnus-face-3, gnus-face-4
+
+ ;; gnus/gnus-srvr.el:
+ ;;   gnus-server-agent, gnus-server-cloud, gnus-server-cloud-host,
+ ;;   gnus-server-opened, gnus-server-closed, gnus-server-denied,
+ ;;   gnus-server-offline
+
+ ;; gnus/gnus-sum.el:
+ ;;   gnus-summary-selected-face
+
+ ;; gnus/message.el:
+ ;;   message-header-to, message-header-cc, message-header-subject,
+ ;;   message-header-newsgroups, message-header-other,
+ ;;   message-header-name, message-header-xheader, message-separator,
+ ;;   message-cited-text, message-mml
+
+ ;; gnus/mm-decode.el:
+ ;;   mm-command-output
+
+ ;; gnus/mm-uu.el:
+ ;;   mm-uu-extract
+
+ ;; gnus/spam.el:
+ ;;   spam
+
+ ;; international/latin1-disp.el:
+ ;;   latin1-display-face
+
+ ;; mail/rmail.el:
+ ;;   rmail-highlight, rmail-header-name
+
+ ;; mh-e/mh-e.el:
+ ;;   (Part of mh-face-data) mh-folder-followup, mh-folder-msg-number,
+ ;;   mh-folder-refiled, mh-folder-subject, mh-folder-tick, mh-folder-to,
+ ;;   mh-letter-header-field, mh-search-folder, mh-show-cc, mh-show-date,
+ ;;   mh-show-from, mh-show-header, mh-show-pgg-bad, mh-show-pgg-good,
+ ;;   mh-show-pgg-unknown, mh-show-signature, mh-show-to,
+ ;;   mh-speedbar-folder, mh-speedbar-selected-folder
+
+ ;; net/eww.el:
+ ;;   eww-form-submit, eww-form-file, eww-form-checkbox, eww-form-select,
+ ;;   eww-form-text, eww-form-textarea, eww-invalid-certificate,
+ ;;   eww-valid-certificate
+
+ ;; net/goto-addr.el:
+ ;;   goto-address-url-face, goto-address-url-mouse-face,
+ ;;   goto-address-mail-face, goto-address-mail-mouse-face
+
+ ;; net/newst-plainview.el:
+ ;;   newsticker-new-item-face, newsticker-old-item-face,
+ ;;   newsticker-immortal-item-face, newsticker-obsolete-item-face,
+ ;;   newsticker-date-face, newsticker-statistics-face,
+ ;;   newsticker-default-face
+
+ ;; net/newst-reader.el:
+ ;;   newsticker-feed-face, newsticker-extra-face,
+ ;;   newsticker-enclosure-face
+
+ ;; net/newst-treeview.el:
+ ;;   newsticker-treeview-face, newsticker-treeview-new-face,
+ ;;   newsticker-treeview-old-face, newsticker-treeview-immortal-face,
+ ;;   newsticker-treeview-obsolete-face,
+ ;;   newsticker-treeview-selection-face
+
+ ;; net/rcirc.el:
+ ;;   rcirc-my-nick, rcirc-other-nick, rcirc-bright-nick, rcirc-dim-nick,
+ ;;   rcirc-server, rcirc-server-prefix, rcirc-timestamp,
+ ;;   rcirc-nick-in-message, rcirc-nick-in-message-full-line,
+ ;;   rcirc-prompt, rcirc-track-nick, rcirc-track-keyword, rcirc-url,
+ ;;   rcirc-keyword
+
+ ;; net/shr.el:145:
+ ;;   shr-strike-through, shr-link, shr-selected-link
+
+ ;; net/sieve-mode.el:
+ ;;   sieve-control-commands, sieve-action-commands, sieve-test-commands,
+ ;;   sieve-tagged-arguments
+
+ ;; nxml/nxml-outln.el:
+ ;;   nxml-heading, nxml-outline-indicator,
+ ;;   nxml-outline-active-indicator, nxml-outline-ellipsis
+
+ ;; nxml/rng-valid.el:
+ ;;   rng-error
+
+ ;; org/org-faces.el:
+ ;;   org-default, org-hide, org-level-1, org-level-2, org-level-3,
+ ;;   org-level-4, org-level-5, org-level-6, org-level-7, org-level-8,
+ ;;   org-special-keyword, org-drawer, org-property-value, org-column,
+ ;;   org-column-title, org-agenda-column-dateline, org-warning,
+ ;;   org-archived, org-link, org-footnote, org-ellipsis, org-target,
+ ;;   org-date, org-date-selected, org-sexp-date, org-tag, org-list-dt,
+ ;;   org-todo, org-done, org-agenda-done, org-headline-done,
+ ;;   org-priority, org-checkbox, org-checkbox-statistics-todo,
+ ;;   org-checkbox-statistics-done, org-table, org-formula, org-code,
+ ;;   org-meta-line, org-document-title, org-document-info,
+ ;;   org-document-info-keyword, org-block, org-block-begin-line,
+ ;;   org-block-end-line, org-verbatim, org-quote, org-verse,
+ ;;   org-clock-overlay, org-agenda-structure, org-agenda-date,
+ ;;   org-agenda-date-today, org-agenda-clocking,
+ ;;   org-agenda-date-weekend, org-scheduled, org-scheduled-today,
+ ;;   org-agenda-dimmed-todo-face, org-scheduled-previously,
+ ;;   org-upcoming-deadline, org-agenda-deadline-faces,
+ ;;   org-agenda-restriction-lock, org-agenda-filter-tags,
+ ;;   org-agenda-filter-regexp, org-agenda-filter-category,
+ ;;   org-agenda-filter-effort, org-time-grid, org-agenda-current-time,
+ ;;   org-agenda-diary, org-agenda-calendar-event,
+ ;;   org-agenda-calendar-sexp, org-latex-and-related, org-macro,
+ ;;   org-tag-group, org-mode-line-clock, org-mode-line-clock-overrun
+
+ ;; org/org-habit.el:
+ ;;   org-habit-clear-face, org-habit-clear-future-face,
+ ;;   org-habit-ready-face, org-habit-ready-future-face,
+ ;;   org-habit-alert-face, org-habit-alert-future-face,
+ ;;   org-habit-overdue-face, org-habit-overdue-future-face
+
+ ;; org/org-indent.el:
+ ;;   org-indent
+
+ ;; org/org-inlinetask.el:
+ ;;   org-inlinetask
+
+ ;; org/ox-beamer.el:
+ ;;   org-beamer-tag
+
+ ;; progmodes/antlr-mode.el:
+ ;;   antlr-default, antlr-keyword, antlr-syntax, antlr-ruledef,
+ ;;   antlr-tokendef, antlr-ruleref, antlr-tokenref, antlr-literal
+
+ ;; progmodes/bat-mode.el:
+ ;;   bat-label-face
+
+ ;; progmodes/cc-fonts.el:
+ ;;   c-annotation-face
+
+ ;; progmodes/cpp.el:
+ ;;   cpp-known-face, cpp-unknown-face, cpp-face-type,
+ ;;   cpp-face-default-list, cpp-face-light-name-list,
+ ;;   cpp-face-dark-name-list, cpp-face-light-list, cpp-face-dark-list,
+ ;;   cpp-face-mono-list, cpp-face-none-list
+
+ ;; progmodes/ebrowse.el:
+ ;;   ebrowse-tree-mark, ebrowse-root-class, ebrowse-file-name,
+ ;;   ebrowse-default, ebrowse-member-attribute, ebrowse-member-class,
+ ;;   ebrowse-progress
+
+ ;; progmodes/etags.el:
+ ;;   tags-tag-face
+
+ ;; progmodes/flymake.el:
+ ;;   flymake-error, flymake-warning, flymake-note
+
+ ;; progmodes/gdb-mi.el:
+ ;;   breakpoint-enabled, breakpoint-disabled
+
+ ;; progmodes/glasses.el:
+ ;;   glasses-face
+
+ ;; progmodes/grep.el:
+ ;;   grep-match-face, grep-hit-face, grep-error-face, grep-context-face
+
+ ;; progmodes/hideif.el:
+ ;;   hide-ifdef-shadow
+
+ ;; progmodes/idlwave.el:
+ ;;   idlwave-class-arrow-face
+
+ ;; progmodes/idlw-help.el:
+ ;;   idlwave-help-link
+
+ ;; progmodes/idlw-shell.el:
+ ;;   idlwave-shell-stop-line-face,
+ ;;   idlwave-shell-electric-stop-line-face,
+ ;;   idlwave-shell-breakpoint-face, idlwave-shell-bp,
+ ;;   idlwave-shell-disabled-breakpoint-face, idlwave-shell-disabled-bp,
+ ;;   idlwave-shell-expression-face, idlwave-shell-output-face
+
+ ;; progmodes/ld-script.el:
+ ;;   ld-script-location-counter
+
+ ;; progmodes/mixal-mode.el:
+ ;;   mixal-font-lock-operation-code-face,
+ ;;   mixal-font-lock-assembly-pseudoinstruction-face,
+ ;;   mixal-font-lock-label-face
+
+ ;; progmodes/octave.el:
+ ;;   octave-function-comment-block
+
+ ;; progmodes/prolog.el:
+ ;;   prolog-redo-face, prolog-exit-face, prolog-exception-face,
+ ;;   prolog-warning-face, prolog-builtin-face
+
+ ;; progmodes/vera-mode.el:
+ ;;   vera-font-lock-interface, vera-font-lock-number,
+ ;;   vera-font-lock-function, vera-font-lock-interface
+
+ ;; progmodes/verilog-mode.el:
+ ;;   verilog-font-lock-translate-off-face, verilog-font-lock-p1800-face,
+ ;;   verilog-font-lock-ams-face,
+ ;;   verilog-font-lock-grouping-keywords-face
+
+ ;; progmodes/vhdl-mode.el:
+ ;;   vhdl-font-lock-prompt-face, vhdl-font-lock-attribute-face,
+ ;;   vhdl-font-lock-enumvalue-face, vhdl-font-lock-function-face,
+ ;;   vhdl-font-lock-directive-face, vhdl-font-lock-reserved-words-face,
+ ;;   vhdl-font-lock-translate-off-face, vhdl-speedbar-entity-face,
+ ;;   vhdl-speedbar-architecture-face, vhdl-speedbar-configuration-face,
+ ;;   vhdl-speedbar-package-face, vhdl-speedbar-library-face,
+ ;;   vhdl-speedbar-instantiation-face, vhdl-speedbar-subprogram-face,
+ ;;   vhdl-speedbar-entity-selected-face,
+ ;;   vhdl-speedbar-architecture-selected-face,
+ ;;   vhdl-speedbar-configuration-selected-face,
+ ;;   vhdl-speedbar-package-selected-face,
+ ;;   vhdl-speedbar-instantiation-selected-face
+
+ ;; progmodes/which-func.el:
+ ;;   which-func
+
+ ;; term/ns-win.el:
+ ;;   ns-working-text-face
+
+ ;; textmodes/css-mode.el:
+ ;;   css-selector, css-property, css-proprietary-property
+
+ ;; textmodes/dns-mode.el:
+ ;;   dns-mode-control-entity, dns-mode-bad-control-entity,
+ ;;   dns-mode-type, dns-mode-class
+
+ ;; textmodes/enriched.el:
+ ;;   fixed, excerpt
+
+ ;; textmodes/flyspell.el:
+ ;;   flyspell-incorrect, flyspell-duplicate
+
+ ;; textmodes/ispell.el:
+ ;;   ispell-highlight-face
+
+ ;; textmodes/reftex-vars.el:
+ ;;   reftex-cursor-selected-face, reftex-mouse-selected-face,
+ ;;   reftex-file-boundary-face, reftex-label-face,
+ ;;   reftex-section-heading-face, reftex-toc-header-face,
+ ;;   reftex-bib-author-face, reftex-bib-year-face,
+ ;;   reftex-bib-title-face, reftex-bib-extra-face,
+ ;;   reftex-select-mark-face, reftex-index-header-face,
+ ;;   reftex-index-section-face, reftex-index-tag-face, reftex-index-face
+
+ ;; textmodes/sgml-mode.el:
+ ;;   sgml-namespace
+
+ ;; textmodes/texinfo.el:
+ ;;   texinfo-heading
+
+ ;; textmodes/tex-mode.el:
+ ;;   superscript, subscript, tex-math, tex-verbatim
+
+ ;; vc/add-log.el:
+ ;;   change-log-date, change-log-name, change-log-email,
+ ;;   change-log-file, change-log-list, change-log-conditionals,
+ ;;   change-log-function, change-log-acknowledgment
+
+ ;; vc/compare-w.el:
+ ;;   compare-windows-removed, compare-windows-added
+
+ ;; vc/log-edit.el:
+ ;;   log-edit-summary, log-edit-header, log-edit-unknown-header
+
+ ;; vc/log-view.el:
+ ;;   log-view-file, log-view-message
+
+ ;; vc/pcvs-info.el:
+ ;;   cvs-header, cvs-filename, cvs-unknown, cvs-handled,
+ ;;   cvs-need-action, cvs-marked, cvs-msg
+
+ ;; vc/vc-hooks.el:
+ ;;   vc-state-base, vc-up-to-date-state, vc-needs-update-state,
+ ;;   vc-locked-state, vc-locally-added-state, vc-conflict-state,
+ ;;   vc-removed-state, vc-missing-state, vc-edited-state
+
+ )
+(custom-theme-set-variables
+ 'zapgroup-borland
+
+ ;; ---------------------------------------------------------------------
+ ;; Additional font faces (variables) from progmodes/cperl-mode.el
+
+ '(cperl-invalid-face 'trailing-whitespace)
+
+ )
+(enable-theme 'zapgroup-borland)
+
+
+;; **********************************************************************
+;; Package list definitions
+
+(custom-set-variables
+ '(package-selected-packages
+   (quote
+    (apache-mode auctex basic-mode caml csv-mode d-mode dpkg-dev-el go-mode js2-mode json-mode julia-mode lua-mode magit markdown-mode matlab-mode mutt-mode php-mode po-mode powershell python-mode scss-mode systemd web-mode yaml-mode))))
+
+
+;; **********************************************************************
+;; End of .emacs
