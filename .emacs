@@ -1,12 +1,11 @@
 ;; General initialisation
+;;(setq load-path                         ; Search $HOME/lib/emacs for libraries
+;;      (cons "/home/drew/lib/emacs" load-path))
 
 (unless (string-match "GNU" (emacs-version))
   (error "GNU Emacs required for this .emacs initialisation file"))
-(when (string< emacs-version "23.1")
-  (error "GNU Emacs 23.1 or later required for this .emacs initialisation file"))
-
-;;(setq load-path                         ; Search $HOME/lib/emacs for libraries
-;;      (cons "/home/drew/lib/emacs" load-path))
+(when (string< emacs-version "25.2")
+  (error "GNU Emacs 25.2 or later required for this .emacs initialisation file"))
 
 (when (require 'package nil t)          ; Emacs 24.1 and later supports packages
   (setq package--init-file-ensured t)   ;   Don't add code to /home/drew/.emacs
@@ -86,24 +85,24 @@
      (1 'warning t)))
   "TODO-style keywords for syntax highlighting.")
 
-(add-to-list 'load-path "/home/drew/.emacs.d/lisp/csv-mode.el") 
-(add-to-list 'load-path "/home/drew/.emacs.d/lisp/pager.el")
-(add-to-list 'load-path "/home/drew/.emacs.d/lisp/ansi-color.el")
-(add-to-list 'load-path "/home/drew/.emacs.d/comment-edit.el")
+(add-to-list 'load-path "~/.emacs.d/lisp/csv-mode.el") 
+(add-to-list 'load-path "~/.emacs.d/lisp/pager.el")
+(add-to-list 'load-path "~/.emacs.d/lisp/ansi-color.el")
+(add-to-list 'load-path "~/.emacs.d/comment-edit.el")
 
 ;;ESS (Emacs Speaks Statistics) stuff ; bash-like comments after code
-(let ((default-directory "/home/drew/.emacs.d/ess/"))
+(let ((default-directory "~/.emacs.d/ess/"))
   (normal-top-level-add-subdirs-to-load-path))
-;;(add-to-list 'load-path "/home/drew/.emacs.d/ess")
-(let ((default-directory "/home/drew/.emacs.d/lisp/"))
+;;(add-to-list 'load-path "~/.emacs.d/ess")
+(let ((default-directory "~/.emacs.d/lisp/"))
   (normal-top-level-add-subdirs-to-load-path))
-(let ((default-directory "/home/drew/.emacs.d/emacs-compbio-kit/"))
+(let ((default-directory "~/.emacs.d/emacs-compbio-kit/"))
   (normal-top-level-add-subdirs-to-load-path))
 
-(add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/")
-(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/")
-(add-to-list 'load-path "/home/drew/.emacs.d/snakemake-mode/snakemake.el")
-(add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/markdown-mode.el")
+(add-to-list 'load-path "~/.emacs.d/mardown-mode/")
+(add-to-list 'load-path "~/.emacs.d/snakemake-mode/")
+(add-to-list 'load-path "~/.emacs.d/snakemake-mode/snakemake.el")
+(add-to-list 'load-path "~/.emacs.d/mardown-mode/markdown-mode.el")
 (require 'markdown-mode)
 (autoload 'markdown-mode "markdown-mode" "Major mode for editing Markdown files" t)
 (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
@@ -132,7 +131,7 @@
 ; disable C-c C-c ess-eval-buffer
 (add-hook 'ess-mode-hook '(lambda () (define-key ess-mode-map "\C-c\C-c" nil)))
 ;(setq eldoc-echo-area-use-multiline-p t)
-(add-to-list 'load-path "/home/drew/.emacs.d/mardown-mode/")
+(add-to-list 'load-path "~/.emacs.d/mardown-mode/")
 
 ; window splitting, removing panes, etc
 (global-set-key (kbd "M-0") 'delete-other-windows) ; 【Alt+0】 unsplit all
