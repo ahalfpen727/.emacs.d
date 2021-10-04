@@ -1,0 +1,248 @@
+* Install required and recommended software 
+** External programs
+*** All platforms
+**** Version control: git
+
+Under Debian/Ubuntu get it like this:     
+
+#+BEGIN_SRC sh :eval never
+sudo apt-get install git 
+#+END_SRC
+
+**** Statistics: R
+
+Under Debian/Ubuntu get the latest version like this, see
+http://www.ubuntuupdates.org:
+
+First find your ubuntu version via
+
+#+BEGIN_SRC sh :eval never
+lsb_release -a
+#+END_SRC
+
+Then edit the /et/apt/sources.list (replace "precise" with your ubuntu
+version):
+
+#+BEGIN_SRC sh :eval never
+sudo emacs /etc/apt/sources.list
+deb http://cran.at.r-project.org/bin/linux/ubuntu/ precise/
+#+END_SRC
+
+Add the keys
+
+#+BEGIN_SRC sh :eval never
+gpg --keyserver keyserver.ubuntu.com --recv-key E084DAB9
+gpg -a --export E084DAB9 | sudo apt-key add -
+#+END_SRC
+
+And finally install
+
+#+BEGIN_SRC sh :eval never
+sudo apt-get update && sudo apt-get upgrade
+sudo apt-get update
+sudo apt-get install r-base
+sudo apt-get install r-base-dev
+#+END_SRC
+
+The R init file is called .Rprofile
+
+**** LaTeX compilation: latexmk
+
+A perl script, which requires perl, which surveys the various files
+involved when compiling a latex document and decides what to do next.
+
+Under Debian/Ubuntu get it like this:     
+
+#+BEGIN_SRC sh :eval never
+sudo apt-get install perl latexmk
+#+END_SRC
+
+The user startup file is called ~/.latexmkrc and used to set among
+other things the pdf viewer. Mine currently looks like this:
+
+#+BEGIN_EXAMPLE
+$pdf_previewer = 'start evince';
+$print_type = 'pdf';
+$pdf_mode = 1;
+$pdflatex = 'pdflatex -interaction=nonstopmode -file-line-error -synctex=1 %O %S';
+#+END_EXAMPLE
+
+**** Spell checking: aspell
+
+#+BEGIN_SRC sh :eval never
+sudo apt-get install aspell
+#+END_SRC     
+
+**** Google command line tool
+     
+Under Debian/Ubuntu get it like this
+
+#+BEGIN_SRC sh :eval never
+sudo apt-get install googlecl
+#+END_SRC
+
+**** File synchronization: unison
+
+Under Debian/Ubuntu get it like this
+     
+#+BEGIN_SRC sh :eval never
+sudo apt-get install unison
+#+END_SRC     
+ 
+*** Linux only
+**** Full-text search tool: recoll 
+#+BEGIN_SRC sh :eval never
+sudo apt-get install recoll
+#+END_SRC     
+
+To configure this program open it and choose "Index configuration"
+under menu item Preferences.
+     
+** Emacs extensions
+*** Emacs extensions
+
+The following list of emacs extensions are registered as git
+submodules of the emacs-genome, and hence downloaded when you run:
+#+BEGIN_SRC sh :eval never
+make init
+#+END_SRC
+
+ - org-mode
+ - auctex
+ - ess
+ - SuperMan
+ - ssh.el 
+ - helm
+ - pandoc-mode
+ - google-translate
+
+See /path/to/emacs-genome/.gitmodules for their addresses.
+
+# *** Emacs extensions not downloaded via make init
+
+* The things you can do when you have the emacs-genome
+** Copy-and-paste
+
+Whenever you copy (M-w) or kill (C-w) text in a region, it will be
+copied to the "kill-ring". The emacs default key bindings are C-y for
+yank (paste) and M-y for yank-pop (paste earlier copies/kills). The
+function yank-pop works when the previous command was yank. It takes
+the text that was yanked and replaces it with the text from an earlier
+kill. Repeatedly pressing M-y then cycles through the ring of earlier
+copies/kills.
+
+The emacs-genome has the following modifications:
+
+M-y is bound to yank-or-pop which combines yank and yank-pop such that
+the same key (M-y) is used for both commands.
+
+My fingers have difficulties to reach M-w, so I use M-r instead.
+
+** Completion
+*** Completing words and sequences of words
+
+Start typing, press M-i (dabbrev-expand). This inserts the closest
+completion. Completions are found in all buffers. "Closest" starts at
+the current point in the current buffer.
+
+Hit M-i again to replace the previous completion by the next closest
+completion.
+
+After inserting a completion, hit first SPACE and directly after M-i
+to insert the next word after the completion from the place where the
+completion was found.
+
+*** Hippie expand
+
+Hit M-i (hippie-expand) to expand file-names and symbols and even R objects in R buffers.
+
+See file ~/emacs-genome/snps/hippie-snps.el for functions that are
+used for completion.
+
+** Evaluating R code
+
+First highlight a region (\M-h) or the line (\M-l) then send the
+region to the R-process (\M-j).
+
+** Latexing a document
+
+#+BEGIN_EXAMPLE   
+\M-j RETURN make-pdf RETURN
+#+END_EXAMPLE
+   
+** Exporting an org document to pdf via latex
+
+#+BEGIN_EXAMPLE   
+\M-k
+#+END_EXAMPLE
+
+** Finding files based on contents  
+
+The full-text search tool recoll is accessed from within emacs with
+the command
+#+BEGIN_EXAMPLE
+M-x helm-recoll-search RET the short-cut is \C-v (control v)
+#+END_EXAMPLE
+Example:
+
+C-v  then type somethin like
+
+#+BEGIN_EXAMPLE
+ext:bib helene blanche
+#+END_EXAMPLE
+
+to find bibtex files which include both words: "helene" and "blanche".
+
+** Translating text
+
+To translate the text at the cursor position (or the marked region) do
+
+#+BEGIN_EXAMPLE
+M-x google-translate-at-point RET
+#+END_EXAMPLE   
+
+then choose two languages and wait for the result.
+
+Suppose you often translate from one language to another, e.g., from
+Danish to English, then it may be desirable to get rid of the choosing
+the languages step and even to replace the original text by the
+translated text. A simple wrapper command (which can be bound to a
+key) looks like this:
+
+#+BEGIN_SRC  emacs-lisp :export code :eval never
+(defun da2en ()
+  (interactive)
+  (let* ((beg (region-beginning))
+	 (end (region-end))
+	 (text (buffer-substring-no-properties beg end))
+	 (translation (save-excursion
+			(google-translate-translate "da" "en" text)
+			(let* ((t-end (previous-single-property-change (point-max) 'face))
+			       (t-beg (previous-single-property-change t-end 'face)))
+			  (buffer-substring-no-properties t-beg t-end)))))
+    (delete-region beg end)
+    (insert translation)))
+#+END_SRC
+
+* Modifying the settings
+
+If you want overwrite some of the emacs-genome way of doing things,
+like changing keybindings or the start-up behaviour, then you need to
+place these changes in your ~/.emacs file *after* the line which loads
+the sample init file.
+
+** Changing keybindings
+
+http://www.masteringemacs.org/articles/2011/02/08/mastering-key-bindings-emacs/
+
+
+#+TITLE: The emacs-genome manual
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc author:nil
+#+LaTeX_HEADER:\usepackage{authblk}
+#+LaTeX_HEADER:\usepackage{natbib}
+#+LaTeX_HEADER:\author{Thomas Alexander Gerds}
+#+LaTeX_HEADER:\affil{Department of Biostatistics, University of Copenhagen}
+#+PROPERTY: session *R* 
+#+PROPERTY: cache yes

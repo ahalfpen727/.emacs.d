@@ -1,0 +1,63 @@
+#+Title: The Emacs Genome 
+#+LaTeX_CLASS: org-article
+#+LaTeX_HEADER:\author{Thomas Alexander Gerds}
+#+OPTIONS: toc:t
+
+* Welcome
+
+Hi! The emacs-genome is an emacs flavour. It consists of extensions
+and smaller code SNPs that make emacs a comprehensive work interface
+for applied (bio)statisticians.
+
+* Requirements
+
+Besides the newest emacs (emacs-version > 24), you need to have
+installed git (the stupid content tracker). In order to use all
+functionality a series of other programs is needed, including latex,
+perl and recoll. See below for further functionality and recommended
+programs.
+
+* Install (in 3 steps)
+
+To use or test the emacs-genome you should download (i.e. clone) the
+latest version. To do this execute the following three steps in a
+terminal, e.g., to use a terminal inside emacs do M-x shell RET.
+
+** Step 1: clone
+
+#+BEGIN_SRC sh :eval ever
+cd ~  # or cd ~/tmp/ or cd ~/pathtowhereIwanttheemacsgenome/
+git clone git://github.com/tagteam/emacs-genome.git
+#+END_SRC 
+
+Now, you should have a new directory called emacs-genome in your home
+directory or in "pathtowhereIwanttheemacsgenome". The emacs-genome
+already contains the code snps. It remains to get the genes, including
+org-mode, auctex, Superman and ESS.
+
+** Step 2: modify your .emacs or init.el file
+
+Adapt the following lines (i.e., change path "~/emacs-genome" to the
+path on your computer if it deviates) and add them to the end of your
+.emacs or init.el file:
+
+#+BEGIN_SRC emacs-lisp :export code :eval ever
+(setq emacs-genome "~/emacs-genome")
+(load-file (expand-file-name "emacs-genome.el" emacs-genome))
+#+END_SRC
+
+** Step 3:
+   
+Relaunch emacs and wait for packages to be installed. 
+
+# read the [[file:emacs-genome-manual.org][manual]]. 
+
+* Project management
+#+BEGIN_SRC  emacs-lisp :export code
+(make-directory "~/metropolis")
+(setq superman-home "~/metropolis") 
+(setq superman-profile ".SuperMan.org")
+#+END_SRC
+
+
+

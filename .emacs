@@ -1,22 +1,6 @@
 ;; General initialisation
-;;(setq load-path                         ; Search $HOME/lib/emacs for libraries
-;;      (cons "/home/drew/lib/emacs" load-path))
-
-(unless (string-match "GNU" (emacs-version))
-  (error "GNU Emacs required for this .emacs initialisation file"))
-(when (string< emacs-version "25.2")
-  (error "GNU Emacs 25.2 or later required for this .emacs initialisation file"))
-
-(when (require 'package nil t)          ; Emacs 24.1 and later supports packages
-  (setq package--init-file-ensured t)   ;   Don't add code to /home/drew/.emacs
-  (setq package-archives                ;   Set custom archive paths
-	`(("gnu" .
-           ,(format "http%s://elpa.gnu.org/packages/"
-                    (if (gnutls-available-p) "s" "")))
-          ("melpa" .
-           ,(format "http%s://melpa.org/packages/"
-                    (if (gnutls-available-p) "s" "")))))
-  (package-initialize))                 ;   Initialise ELPA/MELPA packages
+(setq load-path                         ; Search $HOME/lib/emacs for libraries
+      (cons "/home/drew/lib/emacs" load-path))
 
 (if (display-graphic-p)                 ; Is this a graphics display?
     (progn                              ; Yes...
