@@ -1,6 +1,6 @@
 ;; General initialisation
 (setq load-path                         ; Search $HOME/lib/emacs for libraries
-      (cons "/home/drew/lib/emacs" load-path))
+      (cons "/home/drew/.emacs.d/lisp/" load-path))
 
 (if (display-graphic-p)                 ; Is this a graphics display?
     (progn                              ; Yes...
@@ -39,11 +39,18 @@
 (setq uniquify-buffer-name-style 'reverse)
 (setq ring-bell-function 'ignore)
 (display-time-mode 1)
-;(global-linum-mode t)
-; emacs window default font
-(when (display-graphic-p)
-  (set-default-font "-ADBO-Source Code Pro-normal-normal-normal-*-18-*-*-*-m-0-iso10646-1"))
-;(customize-set-variable 'frame-background-mode 'dark)
+;;(global-linum-mode t)
+
+;; emacs default font
+;;(when (display-graphic-p)
+;;  (set-default-font "-ADBO-Source Code Pro-normal-normal-normal-*-18-*-*-*-m-0-iso10646-1"))
+(add-to-list 'default-frame-alist
+	     '(font . "Inconsolata"))
+(add-to-list 'default-frame-alist
+	     '(font . "-ADBO-Source Code Pro-normal-normal-normal-*-18-*-*-*-m-0-iso10646-1"))
+(add-to-list 'default-frame-alist
+	     '(font . "DejaVu Sans Mono-12"))
+
 ;; mouse stuff from http://www.emacswiki.org/emacs/SmoothScrolling
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
 (setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
@@ -52,9 +59,9 @@
 (add-hook 'LaTeX-mode-hook 'turn-on-flyspell)
 ; (add-hook 'text-mode-hook 'turn-on-flyspell) ; this breaks Rnw editing with ess
 (add-hook 'text-mode-hook 'turn-on-auto-fill)
+(customize-set-variable 'frame-background-mode 'dark)
 
-
-; **********************************************************************                                                                                                                                          
+;; **********************************************************************                                                                                                                                          
 ;; Autoloaded non-ELPA/MELPA packages                                                                                                                                                                              
 
 (autoload 'svn-status "psvn"

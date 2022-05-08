@@ -1,0 +1,31 @@
+;; -*- mode: emacs-lisp; lexical-binding:t; coding: utf-8-emacs; -*-
+;; --------------------------------------------------------------------------
+;; Desktop File for Emacs
+;; --------------------------------------------------------------------------
+;; Created Sun May  8 15:55:58 2022
+;; Desktop file format version 208
+;; Emacs version 27.1
+
+;; Global section:
+(setq desktop-saved-frameset [frameset 1 (25208 8270 335162 716000) (desktop . "208") "drew@drew-MS-7C75" nil nil ((((minibuffer . t) (undecorated) (override-redirect) (font . "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-17-*-*-*-m-0-iso10646-1") (font-parameter . "DejaVu Sans Mono") (border-width . 0) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars . right) (horizontal-scroll-bars) (foreground-color . "black") (background-color . "ivory") (mouse-color . "black") (border-color . "black") (screen-gamma) (line-spacing) (left-fringe . 8) (right-fringe . 8) (no-special-glyphs) (scroll-bar-foreground) (scroll-bar-background) (menu-bar-lines . 1) (tab-bar-lines . 0) (height . 31) (tool-bar-lines . 1) (title) (wait-for-wm . t) (tool-bar-position . top) (inhibit-double-buffering) (icon-type . t) (auto-raise) (auto-lower) (cursor-type . box) (scroll-bar-width . 16) (scroll-bar-height . 16) (alpha) (no-focus-on-map) (no-accept-focus) (fullscreen) (visibility . t) (skip-taskbar) (z-group) (display-type . color) (background-mode . light) (cursor-color . "black") (sticky) (environment) (last-focus-update . t) (frameset--id . "9E6B-0874-6055-D85C") (frameset--mini t . t) (width . 117) (modeline . t) (unsplittable) (left . 40) (top . 69) (icon-name) (display . ":1") (explicit-name)) ((min-height . 4) (min-width . 10) (min-height-ignore . 2) (min-width-ignore . 6) (min-height-safe . 1) (min-width-safe . 2) (min-pixel-height . 84) (min-pixel-width . 100) (min-pixel-height-ignore . 42) (min-pixel-width-ignore . 60) (min-pixel-height-safe . 21) (min-pixel-width-safe . 20)) leaf (pixel-width . 1202) (pixel-height . 630) (total-width . 120) (total-height . 30) (normal-height . 1.0) (normal-width . 1.0) (buffer ".emacs~" (selected . t) (hscroll . 0) (fringes 8 8 nil nil) (margins nil) (scroll-bars nil 2 t nil 0 t nil) (vscroll . 0) (dedicated) (point . 351) (start . 1)) (prev-buffers ("*scratch*" 1 146))))])
+(setq desktop-missing-file-warning nil)
+(setq tags-file-name nil)
+(setq tags-table-list nil)
+(setq search-ring nil)
+(setq regexp-search-ring nil)
+(setq register-alist nil)
+(setq file-name-history nil)
+
+;; Buffer section -- buffers listed in same order as in buffer list:
+(desktop-create-buffer 208
+  "/home/drew/.emacs~"
+  ".emacs~"
+  'emacs-lisp-mode
+  '(eldoc-mode global-auto-revert-mode)
+  351
+  '(514 nil)
+  t
+  nil
+  '((buffer-display-time 25208 8268 515262 908000) (buffer-file-coding-system . utf-8-unix))
+  '((mark-ring (805 351))))
+
