@@ -60,10 +60,17 @@
 ; (add-hook 'text-mode-hook 'turn-on-flyspell) ; this breaks Rnw editing with ess
 (add-hook 'text-mode-hook 'turn-on-auto-fill)
 (customize-set-variable 'frame-background-mode 'dark)
-
-;; **********************************************************************                                                                                                                                          
+;; **********************************************************************
+;; Initialize package sources
+(require 'package)
+(setq package-archives '(("melpa" . "https://melpa.org/packages/")
+			 ("marmalade" . "http://marmalade-repo.org/packages/")
+			 ("elpy" . "https://jorgenschaefer.github.io/packages/")
+                         ("elpa" . "https://elpa.gnu.org/packages/")))
+(package-initialize)
+(unless package-archive-contents
+  (package-refresh-contents))(require 'package)
 ;; Autoloaded non-ELPA/MELPA packages                                                                                                                                                                              
-
 (autoload 'svn-status "psvn"
   "Examine the status of a Subversion working directory." t nil)
 (autoload 'insert-random-uuid "uuidgen"
@@ -75,16 +82,13 @@
   '(("\\(@@@\\|\\_<BUG:\\|\\_<FIXME:\\|\\_<NB:\\|\\_<NOTE:\\|\\_<TODO:\\|\\_<XXX:\\|\\_<XXX\\_>\\)" .
      (1 'warning t)))
   "TODO-style keywords for syntax highlighting.")
-
 (add-to-list 'load-path "~/.emacs.d/lisp/csv-mode.el") 
 (add-to-list 'load-path "~/.emacs.d/lisp/pager.el")
 (add-to-list 'load-path "~/.emacs.d/lisp/ansi-color.el")
 (add-to-list 'load-path "~/.emacs.d/comment-edit.el")
-
 ;;ESS (Emacs Speaks Statistics) stuff ; bash-like comments after code
 (let ((default-directory "~/.emacs.d/ess/"))
   (normal-top-level-add-subdirs-to-load-path))
-;;(add-to-list 'load-path "~/.emacs.d/ess")
 (let ((default-directory "~/.emacs.d/lisp/"))
   (normal-top-level-add-subdirs-to-load-path))
 (let ((default-directory "~/.emacs.d/emacs-compbio-kit/"))
@@ -104,9 +108,6 @@
 ;;(require 'init-ess-r-mode)
 ;;(require 'init-ess-site)
 
-;(add-to-list 'load-path "/path/to/auto-package-update")
-;(require 'auto-package-update)
-
 (org-babel-do-load-languages
 'org-babel-load-languages
 '((R . t)))
@@ -122,18 +123,14 @@
 ; disable C-c C-c ess-eval-buffer
 (add-hook 'ess-mode-hook '(lambda () (define-key ess-mode-map "\C-c\C-c" nil)))
 ;(setq eldoc-echo-area-use-multiline-p t)
-(add-to-list 'load-path "~/.emacs.d/mardown-mode/")
-
 ; window splitting, removing panes, etc
 (global-set-key (kbd "M-0") 'delete-other-windows) ; 【Alt+0】 unsplit all
 (global-set-key (kbd "M-+") 'split-window-right) ; 【Alt+'+'】add split
 (global-set-key (kbd "M-RET") 'other-window) ; 【Alt+Return】 move cursor to next pane
 (global-set-key (kbd "M-1") 'delete-window)  ; remove current pane
-
 (global-set-key "\C-x\C-b" 'electric-buffer-list)
 (global-unset-key (kbd "\C-x DEL") )
 (global-unset-key (kbd "\C-t") )
-
 ; version control                                                                
 (setq version-control t ;; Use version numbers for backups.                  
   kept-new-versions 10  ;; Number of newest versions to keep.                
@@ -141,6 +138,12 @@
   delete-old-versions t ;; Don't ask to delete excess backup versions.       
   backup-by-copying t)  ;; Copy all files, don't rename them.                
 (setq vc-make-backup-files t)
+; C-n add new lines at the end of buffer
+(setq next-line-add-newlines t)
+; open emacs full screen
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
+; Make Emacs highlight paired parentheses
+(show-paren-mode 1)
 
 ; markdown and polymode stuff (for using Rmd files)
 ; file available from: http://jblevins.org/projects/markdown-mode/
